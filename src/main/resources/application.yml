@@ -1,0 +1,136 @@
+server:
+  port: 8080
+---
+spring:
+  profiles: test
+
+rest-template:
+  request-config:
+    connection-request-timeout: 120000  # timeout when requesting a connection from the connection manager
+    connect-timeout: 120000             # timeout until a connection is established
+    socket-timeout: 120000              # timeout for waiting for data
+
+  pooling-http-client-connection-manager:
+    max-total: 20 # Max number of connection to pool
+
+  credential:
+    user:
+    api-key:
+    identity-url:
+
+  seconds-to-token-expiration-time: 3600
+
+kafka:
+  servers:
+
+  topics:
+    in:
+
+  consumer:
+      group: influxdb-consumer-group
+
+influxdb:
+  url:
+
+logging:
+  level:
+    com.rackspacecloud: debug
+    org.springframework:
+      web: info
+      kafka.listener: DEBUG
+
+---
+spring:
+  profiles: development
+
+rest-template:
+  request-config:
+    connection-request-timeout: 120000  # timeout when requesting a connection from the connection manager
+    connect-timeout: 120000             # timeout until a connection is established
+    socket-timeout: 120000              # timeout for waiting for data
+
+  pooling-http-client-connection-manager:
+    max-total: 20 # Max number of connection to pool
+
+  credential:
+    user: ${REST_TEMPLATE_USER}
+    api-key: ${REST_TEMPLATE_USER_API_KEY}
+    identity-url: ${IDENTITY_URL}
+
+  seconds-to-token-expiration-time: 3600
+
+kafka:
+  servers: ${KAFKA_SERVERS}
+
+  ssl:
+    truststore-location: ${TRUSTSTORE_LOCATION}
+    truststore-password: ${TRUSTSTORE_PASSWORD}
+    keystore-location: ${KEYSTORE_LOCATION}
+    keystore-password: ${KEYSTORE_PASSWORD}
+    key-password: ${KEY_PASSWORD}
+  properties:
+    security-protocol: SSL
+
+  topics:
+    in: unified_metrics.json
+
+  consumer:
+      group: influxdb-consumer-group
+
+influxdb:
+  url: ${INFLUXDB_URL}
+
+logging:
+  level:
+    com.rackspacecloud: debug
+    org.springframework:
+      web: info
+      kafka.listener: DEBUG
+
+---
+spring:
+  profiles: production
+
+rest-template:
+  request-config:
+    connection-request-timeout: 120000  # timeout when requesting a connection from the connection manager
+    connect-timeout: 120000             # timeout until a connection is established
+    socket-timeout: 120000              # timeout for waiting for data
+
+  pooling-http-client-connection-manager:
+    max-total: 20 # Max number of connection to pool
+
+  credential:
+    user: ${REST_TEMPLATE_USER}
+    api-key: ${REST_TEMPLATE_USER_API_KEY}
+    identity-url: ${IDENTITY_URL}
+
+  seconds-to-token-expiration-time: 3600
+
+kafka:
+  servers: ${KAFKA_SERVERS}
+
+  ssl:
+    truststore-location: ${TRUSTSTORE_LOCATION}
+    truststore-password: ${TRUSTSTORE_PASSWORD}
+    keystore-location: ${KEYSTORE_LOCATION}
+    keystore-password: ${KEYSTORE_PASSWORD}
+    key-password: ${KEY_PASSWORD}
+  properties:
+    security-protocol: SSL
+
+  topics:
+    in: unified_metrics.json
+
+  consumer:
+    group: influxdb-consumer-group
+
+influxdb:
+  url: ${INFLUXDB_URL}
+
+logging:
+  level:
+    com.rackspacecloud: info
+    org.springframework:
+      web: info
+      kafka.listener: info

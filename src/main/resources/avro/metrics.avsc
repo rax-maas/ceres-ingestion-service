@@ -1,0 +1,158 @@
+{
+  "type": "record",
+  "name": "Metrics",
+  "namespace": "com.rackspace.maas.model",
+  "fields": [
+    {
+      "name": "timestamp",
+      "type": "string",
+      "doc": "ISO 8601 formatted date/time of when the metric was collected, such as 2018-03-27T13:15:06.497Z"
+    },
+    {
+      "name": "tenantId",
+      "type": "string"
+    },
+    {
+      "name": "systemAccountId",
+      "type": ["null", "string"],
+      "doc": "The originating monitoring system's ID for the tenant/account"
+    },
+    {
+      "name": "target",
+      "type": "string"
+    },
+
+     {
+       "name": "available",
+       "type": {
+         "name": "Available",
+         "type": "record",
+         "fields": [
+           {
+             "name": "boolean",
+             "type": "boolean"
+           }
+         ]
+       }
+     },
+    {
+      "name": "monitoringSystem",
+      "doc": "The monitoring system that originated these metrics",
+      "type": {
+        "name": "MonitoringSystem",
+        "type": "enum",
+        "symbols": [
+          "MAAS"
+        ]
+      }
+    },
+    {
+      "name": "check",
+      "type": {
+        "name": "Check",
+        "type": "record",
+        "fields": [
+          {
+            "name": "systemId",
+            "type": "string",
+            "doc": "The monitoring system's specific identifier"
+          },
+          {
+            "name": "type",
+            "type": "string"
+          },
+          {
+            "name": "label",
+            "type": "string",
+            "default": ""
+          },
+          {
+            "name": "metadata",
+            "type": {
+              "name": "Metadata",
+              "type": "map",
+              "values": "string"
+            },
+            "default": {}
+          }
+        ]
+      }
+    },
+    {
+      "name": "entity",
+      "type": {
+        "name": "Entity",
+        "type": "record",
+        "fields": [
+          {
+            "name": "systemId",
+            "type": "string"
+          },
+          {
+            "name": "label",
+            "type": "string",
+            "default": ""
+          },
+          {
+            "name": "metadata",
+            "type": {
+              "name": "Metadata",
+              "type": "map",
+              "values": "string"
+            },
+            "default": {}
+          }
+        ]
+      }
+    },
+    {
+      "name": "values",
+      "type": {
+        "type": "array",
+        "name": "MetricsValues",
+        "items": {
+          "name": "MetricValue",
+          "type": "record",
+          "fields": [
+            {
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "name": "units",
+              "type": "string",
+              "default": ""
+            },
+            {
+              "name": "value",
+              "type": [
+                "double",
+                "int",
+                "long",
+                "string"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "monitoringZone",
+      "type": {
+        "name": "MonitoringZone",
+        "type": "record",
+        "fields": [
+          {
+            "name": "systemId",
+            "type": "string"
+          },
+          {
+            "name": "label",
+            "type": "string",
+            "default": ""
+          }
+        ]
+      }
+    }
+  ]
+}
