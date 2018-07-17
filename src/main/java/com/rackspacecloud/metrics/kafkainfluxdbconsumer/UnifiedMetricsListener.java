@@ -39,6 +39,7 @@ public class UnifiedMetricsListener {
     private static final String INFLUXDB_INGEST_URL_FORMAT = "%s/write?db=%s&rp=rp_3d";
     private static final int TTL_IN_SECONDS = 172800;
     private static final int MAX_TRY_FOR_INGEST = 5;
+    private static Set<String> influxdbSet;
 
     @Value("${influxdb.url}")
     private String influxdbUrl;
@@ -49,13 +50,7 @@ public class UnifiedMetricsListener {
     public UnifiedMetricsListener(IAuthTokenProvider authTokenProvider, RestTemplate restTemplate){
         this.authTokenProvider = authTokenProvider;
         this.restTemplate = restTemplate;
-    }
-
-    @Data
-    class MetricNameItems {
-        String entityId;
-        String checkType;
-        String checkId;
+        influxdbSet = new HashSet<>();
     }
 
     /**
@@ -68,11 +63,21 @@ public class UnifiedMetricsListener {
 
         boolean isInfluxdbIngestionSuccessful = false;
 
+        if(!isValid(TENANT_ID, record.getTenantId(), record)) {
+            LOGGER.error("Invalid tenant ID [{}] in the received record [{}]", record.getTenantId(), record);
+            return false;
+        }
+
+        // Create the database if it's not there
+        String databaseName = createDatabaseForGivenTenant(record.getTenantId().toString());
+
+        if(StringUtils.isEmpty(databaseName)) return false;
+
         try {
             String payload = convertToInfluxdbIngestFormat(record);
 
             if (payload != null) {
-                isInfluxdbIngestionSuccessful = ingestToInfluxdb(payload);
+                isInfluxdbIngestionSuccessful = ingestToInfluxdb(payload, databaseName);
             }
         }
         catch(Exception e){
@@ -92,6 +97,38 @@ public class UnifiedMetricsListener {
         return isInfluxdbIngestionSuccessful;
     }
 
+    private String createDatabaseForGivenTenant(final String tenantId) {
+        String cleanedTenantId = replaceSpecialCharacters(tenantId);
+
+        if(influxdbSet.contains(cleanedTenantId)) return cleanedTenantId;
+
+        String dbCreatePayload =
+                String.format("q=CREATE DATABASE \"%s\" WITH DURATION %s NAME \"%s\"",
+                        cleanedTenantId, "3d", "rp_3d");
+
+        String url = String.format("%s/query", influxdbUrl);
+//        String url = "http://localhost:8086/query";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+        HttpEntity<String> entity = new HttpEntity<>(dbCreatePayload, headers);
+
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+
+            if (response == null || response.getStatusCode() != HttpStatus.OK) {
+                LOGGER.error("Response is null or Http Status code is not 'OK'");
+            }
+            influxdbSet.add(cleanedTenantId);
+            return cleanedTenantId;
+        }
+        catch(Exception ex){
+            LOGGER.error("restTemplate.exchange threw exception with message: {}", ex.getMessage());
+        }
+
+        return null;
+    }
+
     /**
      * Get the current count of the total message processed by the consumer
      * @return
@@ -103,8 +140,9 @@ public class UnifiedMetricsListener {
     /**
      * This method is responsible for ingesting data into Influxdb using ingest API.
      * @param payload
+     * @param databaseName
      */
-    private boolean ingestToInfluxdb(String payload) throws Exception {
+    private boolean ingestToInfluxdb(String payload, String databaseName) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.TEXT_PLAIN);
         List<MediaType> mediaTypes = new ArrayList<>();
@@ -114,8 +152,7 @@ public class UnifiedMetricsListener {
 //        headers.set(X_AUTH_TOKEN, authTokenProvider.getAuthToken());
 
         HttpEntity<String> request = new HttpEntity<>(payload, headers);
-        String dbName = String.format("tenant_id_%s", authTokenProvider.getTenantId());
-        String url = String.format(INFLUXDB_INGEST_URL_FORMAT, influxdbUrl, dbName);
+        String url = String.format(INFLUXDB_INGEST_URL_FORMAT, influxdbUrl, databaseName);
 
         ResponseEntity<String> response = null;
         int count = 0;
@@ -157,24 +194,20 @@ public class UnifiedMetricsListener {
      * @return
      */
     private String convertToInfluxdbIngestFormat(Metrics record){
-        if(!isValid(TENANT_ID, record.getTenantId(), record)){
-            return null;
-        }
 
-        if(!isValid(TIMESTAMP, record.getTimestamp(), record)){
-            return null;
-        }
+        if(!isValid(TIMESTAMP, record.getTimestamp(), record)) return null;
 
         if(record.getCheck() == null) return null;
 
         String measurementName = record.getCheck().getType().toString().replace('.','_');
 
         Set<String> tagSet = getTagSet(record);
+        if(tagSet == null) return null;
 
         Instant instant = Instant.parse(record.getTimestamp());
 
         // Convert into nano seconds
-        long collectionTime = instant.getEpochSecond()*1000*1000*1000 + instant.getNano(); //instant.toEpochMilli() + instant.getNano();
+        long collectionTime = instant.getEpochSecond()*1000*1000*1000 + instant.getNano();
 
         String payload = createPayload(record, collectionTime, tagSet, measurementName);
         if (payload == null) {
@@ -187,9 +220,6 @@ public class UnifiedMetricsListener {
 
     private Set<String> getTagSet(Metrics record) {
         Set<String> tagSet = new HashSet<>();
-
-        String tenantId = record.getTenantId().toString();
-        tagSet.add(String.format("tenantid=%s", escapeSpecialCharactersForInfluxdb(tenantId.trim())));
 
         if(!StringUtils.isEmpty(record.getSystemAccountId()))
             tagSet.add(String.format("systemaccountid=%s", escapeSpecialCharactersForInfluxdb(record.getSystemAccountId().toString().trim())));
@@ -247,6 +277,17 @@ public class UnifiedMetricsListener {
         return inputString;
     }
 
+    private String replaceSpecialCharacters(String inputString){
+        final String[] metaCharacters = {"\\",":","^","$","{","}","[","]","(",")",".","*","+","?","|","<",">","-","&","%"," "};
+
+        for (int i = 0 ; i < metaCharacters.length ; i++){
+            if(inputString.contains(metaCharacters[i])){
+                inputString = inputString.replace(metaCharacters[i],"_");
+            }
+        }
+        return inputString;
+    }
+
     private String createPayload(
             final Metrics record, final long collectionTime, final Set<String> tagSet, final String measurementName) {
 
@@ -265,9 +306,8 @@ public class UnifiedMetricsListener {
 
                 String tagSetString = String.join(",", tempTagSet);
 
-                String payloadItem =
-                        String.format("%s,%s %s %s", measurementName, tagSetString, fieldSet, collectionTime);
-//                        String.format("%s,%s %s", measurementName, tagSetString, fieldSet);
+                // payload item's string format is to create the line protocol. So, spaces and comma are there for a reason.
+                String payloadItem = String.format("%s,%s %s %s", measurementName, tagSetString, fieldSet, collectionTime);
 
                 payload.add(payloadItem);
             } catch(NumberFormatException e){
