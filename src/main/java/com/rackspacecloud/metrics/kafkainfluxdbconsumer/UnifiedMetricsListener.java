@@ -14,10 +14,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @Component
 public class UnifiedMetricsListener {
@@ -39,18 +36,44 @@ public class UnifiedMetricsListener {
     private static final String INFLUXDB_INGEST_URL_FORMAT = "%s/write?db=%s&rp=rp_3d";
     private static final int TTL_IN_SECONDS = 172800;
     private static final int MAX_TRY_FOR_INGEST = 5;
-    private static Set<String> influxdbSet;
+    private static Map<String, InfluxdbInfo> influxDbInfoMap;
+
+    // TODO: Delete it once test is done
+    private static final int MAX_DATABASE_COUNT_FOR_TEST = 2000;
+    private int databaseCountForTest = 0;
 
     @Value("${influxdb.url}")
     private String influxdbUrl;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UnifiedMetricsListener.class);
 
+    @Data
+    static class InfluxdbInfo {
+        private String baseUrlInTheCluster;
+        private String databaseName;
+
+        public InfluxdbInfo(String baseUrlInTheCluster, String databaseName){
+            this.baseUrlInTheCluster = baseUrlInTheCluster;
+            this.databaseName = databaseName;
+        }
+    }
+
+    @Data
+    static class TagAndFieldsSets {
+        private Set<String> tagSet;
+        private Set<String> fieldSet;
+
+        public TagAndFieldsSets(){
+            tagSet = new HashSet<>();
+            fieldSet = new HashSet<>();
+        }
+    }
+
     @Autowired
     public UnifiedMetricsListener(IAuthTokenProvider authTokenProvider, RestTemplate restTemplate){
         this.authTokenProvider = authTokenProvider;
         this.restTemplate = restTemplate;
-        influxdbSet = new HashSet<>();
+        influxDbInfoMap = new HashMap<>();
     }
 
     /**
@@ -68,16 +91,21 @@ public class UnifiedMetricsListener {
             return false;
         }
 
-        // Create the database if it's not there
-        String databaseName = createDatabaseForGivenTenant(record.getTenantId().toString());
+        String tenantId = record.getTenantId().toString();
 
-        if(StringUtils.isEmpty(databaseName)) return false;
+        // TODO: DELETE IT AFTER TEST
+        tenantId = getNextTenantId();
+
+        // Get db and URL info to route data to
+        InfluxdbInfo influxdbInfo = GetInfluxDbInfoForGivenTenant(tenantId);
+
+        if(StringUtils.isEmpty(influxdbInfo.databaseName)) return false;
 
         try {
             String payload = convertToInfluxdbIngestFormat(record);
 
             if (payload != null) {
-                isInfluxdbIngestionSuccessful = ingestToInfluxdb(payload, databaseName);
+                isInfluxdbIngestionSuccessful = ingestToInfluxdb(payload, influxdbInfo);
             }
         }
         catch(Exception e){
@@ -97,17 +125,24 @@ public class UnifiedMetricsListener {
         return isInfluxdbIngestionSuccessful;
     }
 
-    private String createDatabaseForGivenTenant(final String tenantId) {
-        String cleanedTenantId = replaceSpecialCharacters(tenantId);
+    private InfluxdbInfo GetInfluxDbInfoForGivenTenant(final String tenantId) {
+        if(influxDbInfoMap.containsKey(tenantId)) return influxDbInfoMap.get(tenantId);
 
-        if(influxdbSet.contains(cleanedTenantId)) return cleanedTenantId;
+        String cleanedTenantId = replaceSpecialCharacters(tenantId);
+        String databaseName = "db_" + cleanedTenantId;
 
         String dbCreatePayload =
                 String.format("q=CREATE DATABASE \"%s\" WITH DURATION %s NAME \"%s\"",
-                        cleanedTenantId, "3d", "rp_3d");
+                        databaseName, "3d", "rp_3d");
 
-        String url = String.format("%s/query", influxdbUrl);
-//        String url = "http://localhost:8086/query";
+        // TODO: Work on routing given tenant to specific Influxdb instance
+        int port = (databaseCountForTest < (MAX_DATABASE_COUNT_FOR_TEST / 2)) ? 81 : 80;
+
+        String baseUrl = String.format("%s:%d", influxdbUrl, port);
+//        String baseUrl = "http://localhost:8086";
+        String url = String.format("%s/query", baseUrl);
+
+        InfluxdbInfo influxDbInfo = new InfluxdbInfo(baseUrl, databaseName);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -119,14 +154,20 @@ public class UnifiedMetricsListener {
             if (response == null || response.getStatusCode() != HttpStatus.OK) {
                 LOGGER.error("Response is null or Http Status code is not 'OK'");
             }
-            influxdbSet.add(cleanedTenantId);
-            return cleanedTenantId;
+            influxDbInfoMap.put(tenantId, influxDbInfo);
+            return influxDbInfo;
         }
         catch(Exception ex){
             LOGGER.error("restTemplate.exchange threw exception with message: {}", ex.getMessage());
         }
 
         return null;
+    }
+
+    // TODO: JUST FOR TESTING NUMBER OF DATABASES PER INSTANCE
+    private String getNextTenantId(){
+        if(databaseCountForTest == MAX_DATABASE_COUNT_FOR_TEST) databaseCountForTest = 0;
+        return "" + databaseCountForTest++;
     }
 
     /**
@@ -140,9 +181,8 @@ public class UnifiedMetricsListener {
     /**
      * This method is responsible for ingesting data into Influxdb using ingest API.
      * @param payload
-     * @param databaseName
      */
-    private boolean ingestToInfluxdb(String payload, String databaseName) {
+    private boolean ingestToInfluxdb(String payload, InfluxdbInfo influxdbInfo) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.TEXT_PLAIN);
         List<MediaType> mediaTypes = new ArrayList<>();
@@ -152,7 +192,9 @@ public class UnifiedMetricsListener {
 //        headers.set(X_AUTH_TOKEN, authTokenProvider.getAuthToken());
 
         HttpEntity<String> request = new HttpEntity<>(payload, headers);
-        String url = String.format(INFLUXDB_INGEST_URL_FORMAT, influxdbUrl, databaseName);
+
+        String url = String.format(INFLUXDB_INGEST_URL_FORMAT,
+                influxdbInfo.baseUrlInTheCluster, influxdbInfo.databaseName);
 
         ResponseEntity<String> response = null;
         int count = 0;
@@ -201,15 +243,15 @@ public class UnifiedMetricsListener {
 
         String measurementName = record.getCheck().getType().toString().replace('.','_');
 
-        Set<String> tagSet = getTagSet(record);
-        if(tagSet == null) return null;
+        TagAndFieldsSets tagAndFieldsSets = getTagAndFieldsSets(record);
+        if (tagAndFieldsSets == null) return null;
 
         Instant instant = Instant.parse(record.getTimestamp());
 
         // Convert into nano seconds
         long collectionTime = instant.getEpochSecond()*1000*1000*1000 + instant.getNano();
 
-        String payload = createPayload(record, collectionTime, tagSet, measurementName);
+        String payload = createPayload(record, collectionTime, tagAndFieldsSets, measurementName);
         if (payload == null) {
             LOGGER.error("There is no payload for influxdb. Record:[{}]", record);
             return null;
@@ -218,51 +260,77 @@ public class UnifiedMetricsListener {
         return payload;
     }
 
-    private Set<String> getTagSet(Metrics record) {
-        Set<String> tagSet = new HashSet<>();
+    private TagAndFieldsSets getTagAndFieldsSets(Metrics record) {
+        TagAndFieldsSets tagAndFieldsSets = new TagAndFieldsSets();
+
+        populateTagAndFieldSets(record, tagAndFieldsSets);
+
+        if(tagAndFieldsSets.fieldSet.size() == 0) {
+            LOGGER.error("There is no field in the field set. So, nothing to ingest.");
+            return null;
+        }
+
+        if(tagAndFieldsSets.tagSet.size() == 0){
+            LOGGER.error("There is no tag in the tag set. So, nothing to ingest.");
+            return null;
+        }
+        return tagAndFieldsSets;
+    }
+
+    private void populateTagAndFieldSets(Metrics record, TagAndFieldsSets tagAndFieldsSets) {
+        Set<String> tagSet = tagAndFieldsSets.tagSet;
+        Set<String> fieldSet = tagAndFieldsSets.fieldSet;
 
         if(!StringUtils.isEmpty(record.getSystemAccountId()))
-            tagSet.add(String.format("systemaccountid=%s", escapeSpecialCharactersForInfluxdb(record.getSystemAccountId().toString().trim())));
+            fieldSet.add(String.format("systemaccountid=\"%s\"",
+                    escapeSpecialCharactersForInfluxdb(record.getSystemAccountId().toString().trim())));
 
         if(!StringUtils.isEmpty(record.getTarget().toString()))
-            tagSet.add(String.format("target=%s", escapeSpecialCharactersForInfluxdb(record.getTarget().toString().trim())));
+            tagSet.add(String.format("target=%s",
+                    escapeSpecialCharactersForInfluxdb(record.getTarget().toString().trim())));
 
         if(!StringUtils.isEmpty(record.getMonitoringSystem().toString()))
-            tagSet.add(String.format("monitoringsystem=%s", escapeSpecialCharactersForInfluxdb(record.getMonitoringSystem().toString().trim())));
+            tagSet.add(String.format("monitoringsystem=%s",
+                    escapeSpecialCharactersForInfluxdb(record.getMonitoringSystem().toString().trim())));
 
-        addCheck(record.getCheck(), tagSet);
-        addEntityTags(record, tagSet);
-        addMonitoringZone(record, tagSet);
-        return tagSet;
+        addCheck(record.getCheck(), tagAndFieldsSets);
+        addEntityTags(record, tagAndFieldsSets);
+        addMonitoringZone(record, tagAndFieldsSets);
     }
 
-    private void addCheck(Check check, Set<String> tagSet) {
+    private void addCheck(Check check, TagAndFieldsSets tagAndFieldsSets) {
         if(!StringUtils.isEmpty(check.getSystemId().toString()))
-            tagSet.add(String.format("checksystemid=%s", escapeSpecialCharactersForInfluxdb(check.getSystemId().toString().trim())));
+            tagAndFieldsSets.fieldSet.add(String.format("checksystemid=\"%s\"",
+                    escapeSpecialCharactersForInfluxdb(check.getSystemId().toString().trim())));
 
         if(!StringUtils.isEmpty(check.getLabel().toString()))
-            tagSet.add(String.format("checklabel=%s", escapeSpecialCharactersForInfluxdb(check.getLabel().toString().trim())));
+            tagAndFieldsSets.tagSet.add(String.format("checklabel=%s",
+                    escapeSpecialCharactersForInfluxdb(check.getLabel().toString().trim())));
     }
 
-    private void addMonitoringZone(Metrics record, Set<String> tagSet) {
+    private void addMonitoringZone(Metrics record, TagAndFieldsSets tagAndFieldsSets) {
         if(record.getMonitoringZone() != null){
             MonitoringZone monitoringZone = record.getMonitoringZone();
             if(!StringUtils.isEmpty(monitoringZone.getSystemId().toString()))
-                tagSet.add(String.format("monitoringzonesystemid=%s", escapeSpecialCharactersForInfluxdb(monitoringZone.getSystemId().toString().trim())));
+                tagAndFieldsSets.fieldSet.add(String.format("monitoringzonesystemid=\"%s\"",
+                        escapeSpecialCharactersForInfluxdb(monitoringZone.getSystemId().toString().trim())));
 
             if(!StringUtils.isEmpty(monitoringZone.getLabel().toString()))
-                tagSet.add(String.format("monitoringzonelabel=%s", escapeSpecialCharactersForInfluxdb(monitoringZone.getLabel().toString().trim())));
+                tagAndFieldsSets.tagSet.add(String.format("monitoringzonelabel=%s",
+                        escapeSpecialCharactersForInfluxdb(monitoringZone.getLabel().toString().trim())));
         }
     }
 
-    private void addEntityTags(Metrics record, Set<String> tagSet) {
+    private void addEntityTags(Metrics record, TagAndFieldsSets tagAndFieldsSets) {
         if(record.getEntity() != null){
             Entity entity = record.getEntity();
             if(!StringUtils.isEmpty(entity.getSystemId().toString()))
-                tagSet.add(String.format("entitysystemid=%s", escapeSpecialCharactersForInfluxdb(entity.getSystemId().toString().trim())));
+                tagAndFieldsSets.fieldSet.add(String.format("entitysystemid=\"%s\"",
+                        escapeSpecialCharactersForInfluxdb(entity.getSystemId().toString().trim())));
 
             if(!StringUtils.isEmpty(entity.getLabel().toString()))
-                tagSet.add(String.format("entitylabel=%s", escapeSpecialCharactersForInfluxdb(entity.getLabel().toString().trim())));
+                tagAndFieldsSets.tagSet.add(String.format("entitylabel=%s",
+                        escapeSpecialCharactersForInfluxdb(entity.getLabel().toString().trim())));
         }
     }
 
@@ -289,25 +357,31 @@ public class UnifiedMetricsListener {
     }
 
     private String createPayload(
-            final Metrics record, final long collectionTime, final Set<String> tagSet, final String measurementName) {
+            final Metrics record, final long collectionTime,
+            final TagAndFieldsSets tagAndFieldsSets, final String measurementName) {
 
         List<String> payload = new ArrayList<>();
 
         for(MetricValue value : record.getValues()){
-            Set<String> tempTagSet = new HashSet<>(tagSet);
+            Set<String> tempTagSet = new HashSet<>(tagAndFieldsSets.tagSet);
+            Set<String> tempFieldSet = new HashSet<>(tagAndFieldsSets.fieldSet);
+
             try {
-                tempTagSet.add(String.format("name=%s", escapeSpecialCharactersForInfluxdb(value.getName().toString().trim())));
+                tempTagSet.add(String.format("name=%s",
+                        escapeSpecialCharactersForInfluxdb(value.getName().toString().trim())));
 
                 if(!StringUtils.isEmpty(value.getUnits()))
-                    tempTagSet.add(String.format("units=%s", escapeSpecialCharactersForInfluxdb(value.getUnits().toString().trim())));
+                    tempTagSet.add(String.format("units=%s",
+                            escapeSpecialCharactersForInfluxdb(value.getUnits().toString().trim())));
 
                 double val = Double.parseDouble(value.getValue().toString());
-                String fieldSet = String.format("metricvalue=%s", val);
+                tempFieldSet.add(String.format("metricvalue=%s", val));
 
                 String tagSetString = String.join(",", tempTagSet);
+                String fieldSetString = String.join(",", tempFieldSet);
 
                 // payload item's string format is to create the line protocol. So, spaces and comma are there for a reason.
-                String payloadItem = String.format("%s,%s %s %s", measurementName, tagSetString, fieldSet, collectionTime);
+                String payloadItem = String.format("%s,%s %s %s", measurementName, tagSetString, fieldSetString, collectionTime);
 
                 payload.add(payloadItem);
             } catch(NumberFormatException e){
