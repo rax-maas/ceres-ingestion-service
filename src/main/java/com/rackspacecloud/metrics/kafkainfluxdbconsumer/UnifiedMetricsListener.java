@@ -11,6 +11,7 @@ import org.springframework.http.*;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
@@ -39,7 +40,7 @@ public class UnifiedMetricsListener {
     private static Map<String, InfluxdbInfo> influxDbInfoMap;
 
     // TODO: Delete it once test is done
-    private static final int MAX_DATABASE_COUNT_FOR_TEST = 2000;
+    // private static final int MAX_DATABASE_COUNT_FOR_TEST = 50;
     private int databaseCountForTest = 0;
 
     @Value("${influxdb.url}")
@@ -93,11 +94,11 @@ public class UnifiedMetricsListener {
 
         String tenantId = record.getTenantId().toString();
 
-        // TODO: DELETE IT AFTER TEST
-        tenantId = getNextTenantId();
+//        // TODO: DELETE IT AFTER TEST
+//        tenantId = getNextTenantId();
 
         // Get db and URL info to route data to
-        InfluxdbInfo influxdbInfo = GetInfluxDbInfoForGivenTenant(tenantId);
+        InfluxdbInfo influxdbInfo = getInfluxdbInfo(tenantId);
 
         if(StringUtils.isEmpty(influxdbInfo.databaseName)) return false;
 
@@ -125,50 +126,59 @@ public class UnifiedMetricsListener {
         return isInfluxdbIngestionSuccessful;
     }
 
-    private InfluxdbInfo GetInfluxDbInfoForGivenTenant(final String tenantId) {
-        if(influxDbInfoMap.containsKey(tenantId)) return influxDbInfoMap.get(tenantId);
-
-        String cleanedTenantId = replaceSpecialCharacters(tenantId);
-        String databaseName = "db_" + cleanedTenantId;
-
-        String dbCreatePayload =
-                String.format("q=CREATE DATABASE \"%s\" WITH DURATION %s NAME \"%s\"",
-                        databaseName, "3d", "rp_3d");
-
-        // TODO: Work on routing given tenant to specific Influxdb instance
-        int port = (databaseCountForTest < (MAX_DATABASE_COUNT_FOR_TEST / 2)) ? 81 : 80;
-
-        String baseUrl = String.format("%s:%d", influxdbUrl, port);
-//        String baseUrl = "http://localhost:8086";
-        String url = String.format("%s/query", baseUrl);
-
-        InfluxdbInfo influxDbInfo = new InfluxdbInfo(baseUrl, databaseName);
+    private boolean createDatabase(final InfluxdbInfo influxdbInfo) {
+        String dbCreatePayload = String.format("q=CREATE DATABASE \"%s\" WITH DURATION %s NAME \"%s\"",
+                influxdbInfo.databaseName, "3d", "rp_3d");
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
         HttpEntity<String> entity = new HttpEntity<>(dbCreatePayload, headers);
 
+        String url = String.format("%s/query", influxdbInfo.baseUrlInTheCluster);
         try {
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
 
             if (response == null || response.getStatusCode() != HttpStatus.OK) {
                 LOGGER.error("Response is null or Http Status code is not 'OK'");
             }
-            influxDbInfoMap.put(tenantId, influxDbInfo);
-            return influxDbInfo;
+            //TODO: why return true? Find out what status code we get when database creation fails or succeeds.
+            return true;
         }
         catch(Exception ex){
             LOGGER.error("restTemplate.exchange threw exception with message: {}", ex.getMessage());
         }
 
-        return null;
+        return false;
     }
 
-    // TODO: JUST FOR TESTING NUMBER OF DATABASES PER INSTANCE
-    private String getNextTenantId(){
-        if(databaseCountForTest == MAX_DATABASE_COUNT_FOR_TEST) databaseCountForTest = 0;
-        return "" + databaseCountForTest++;
+    private InfluxdbInfo getInfluxdbInfo(String tenantId) {
+        if(influxDbInfoMap.containsKey(tenantId)) return influxDbInfoMap.get(tenantId);
+        int port = getRoute(tenantId);
+
+        String baseUrl = String.format("%s:%d", influxdbUrl, port);
+//        String baseUrl = "http://localhost:8086";
+
+        String cleanedTenantId = replaceSpecialCharacters(tenantId);
+        String databaseName = "db_" + cleanedTenantId;
+
+        InfluxdbInfo influxDbInfo = new InfluxdbInfo(baseUrl, databaseName);
+        influxDbInfoMap.put(tenantId, influxDbInfo);
+        return influxDbInfo;
     }
+
+    private int getRoute(String tenantId) {
+//        // TODO: Work on routing given tenant to specific Influxdb instance
+//        return (databaseCountForTest < (MAX_DATABASE_COUNT_FOR_TEST / 2)) ? 81 : 80;
+
+        // TODO: Temporary routing solution.
+        return ((tenantId.hashCode())%2 == 0) ? 80 : 81;
+    }
+
+//    // TODO: JUST FOR TESTING NUMBER OF DATABASES PER INSTANCE
+//    private String getNextTenantId(){
+//        if(databaseCountForTest == MAX_DATABASE_COUNT_FOR_TEST) databaseCountForTest = 0;
+//        return "" + databaseCountForTest++;
+//    }
 
     /**
      * Get the current count of the total message processed by the consumer
@@ -199,11 +209,25 @@ public class UnifiedMetricsListener {
         ResponseEntity<String> response = null;
         int count = 0;
 
-        while(response == null && count < MAX_TRY_FOR_INGEST) {
+        // TODO: Simplify this logic a little to make it maintainable
+        while((response == null || response.getStatusCode() != HttpStatus.NO_CONTENT)
+                && count < MAX_TRY_FOR_INGEST) {
             try {
                 response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
+
+                if (response.getStatusCode() == HttpStatus.NOT_FOUND) {
+                    LOGGER.info("Database {} is not found in route [{}].",
+                            influxdbInfo.databaseName, influxdbInfo.baseUrlInTheCluster);
+                    createDatabase(influxdbInfo);
+                }
             } catch (Exception ex) {
                 LOGGER.error("Using url [{}], Exception message: {}", url, ex.getMessage());
+
+                if(((HttpClientErrorException) ex).getStatusCode().value() == 404){
+                    LOGGER.info("Database {} is not found in route [{}].",
+                            influxdbInfo.databaseName, influxdbInfo.baseUrlInTheCluster);
+                    createDatabase(influxdbInfo);
+                }
             }
             if(response != null) {
                 break;
@@ -263,26 +287,10 @@ public class UnifiedMetricsListener {
     private TagAndFieldsSets getTagAndFieldsSets(Metrics record) {
         TagAndFieldsSets tagAndFieldsSets = new TagAndFieldsSets();
 
-        populateTagAndFieldSets(record, tagAndFieldsSets);
-
-        if(tagAndFieldsSets.fieldSet.size() == 0) {
-            LOGGER.error("There is no field in the field set. So, nothing to ingest.");
-            return null;
-        }
-
-        if(tagAndFieldsSets.tagSet.size() == 0){
-            LOGGER.error("There is no tag in the tag set. So, nothing to ingest.");
-            return null;
-        }
-        return tagAndFieldsSets;
-    }
-
-    private void populateTagAndFieldSets(Metrics record, TagAndFieldsSets tagAndFieldsSets) {
         Set<String> tagSet = tagAndFieldsSets.tagSet;
-        Set<String> fieldSet = tagAndFieldsSets.fieldSet;
 
         if(!StringUtils.isEmpty(record.getSystemAccountId()))
-            fieldSet.add(String.format("systemaccountid=\"%s\"",
+            tagSet.add(String.format("systemaccountid=\"%s\"",
                     escapeSpecialCharactersForInfluxdb(record.getSystemAccountId().toString().trim())));
 
         if(!StringUtils.isEmpty(record.getTarget().toString()))
@@ -296,11 +304,13 @@ public class UnifiedMetricsListener {
         addCheck(record.getCheck(), tagAndFieldsSets);
         addEntityTags(record, tagAndFieldsSets);
         addMonitoringZone(record, tagAndFieldsSets);
+
+        return tagAndFieldsSets;
     }
 
     private void addCheck(Check check, TagAndFieldsSets tagAndFieldsSets) {
         if(!StringUtils.isEmpty(check.getSystemId().toString()))
-            tagAndFieldsSets.fieldSet.add(String.format("checksystemid=\"%s\"",
+            tagAndFieldsSets.tagSet.add(String.format("checksystemid=\"%s\"",
                     escapeSpecialCharactersForInfluxdb(check.getSystemId().toString().trim())));
 
         if(!StringUtils.isEmpty(check.getLabel().toString()))
@@ -312,7 +322,7 @@ public class UnifiedMetricsListener {
         if(record.getMonitoringZone() != null){
             MonitoringZone monitoringZone = record.getMonitoringZone();
             if(!StringUtils.isEmpty(monitoringZone.getSystemId().toString()))
-                tagAndFieldsSets.fieldSet.add(String.format("monitoringzonesystemid=\"%s\"",
+                tagAndFieldsSets.tagSet.add(String.format("monitoringzonesystemid=\"%s\"",
                         escapeSpecialCharactersForInfluxdb(monitoringZone.getSystemId().toString().trim())));
 
             if(!StringUtils.isEmpty(monitoringZone.getLabel().toString()))
@@ -325,7 +335,7 @@ public class UnifiedMetricsListener {
         if(record.getEntity() != null){
             Entity entity = record.getEntity();
             if(!StringUtils.isEmpty(entity.getSystemId().toString()))
-                tagAndFieldsSets.fieldSet.add(String.format("entitysystemid=\"%s\"",
+                tagAndFieldsSets.tagSet.add(String.format("entitysystemid=\"%s\"",
                         escapeSpecialCharactersForInfluxdb(entity.getSystemId().toString().trim())));
 
             if(!StringUtils.isEmpty(entity.getLabel().toString()))

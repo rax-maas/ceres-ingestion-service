@@ -72,7 +72,7 @@ kafka:
     security-protocol: SSL
 
   topics:
-    in: unified_metrics.json
+    in: maas_metrics.json
 
   consumer:
       group: influxdb-consumer-group
@@ -120,7 +120,7 @@ kafka:
     security-protocol: SSL
 
   topics:
-    in: unified_metrics.json
+    in: maas_metrics.json
 
   consumer:
     group: influxdb-consumer-group
