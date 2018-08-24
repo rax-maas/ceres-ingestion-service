@@ -1,6 +1,6 @@
 {
   "type": "record",
-  "name": "Metrics",
+  "name": "Metric",
   "namespace": "com.rackspace.maas.model",
   "fields": [
     {
@@ -9,32 +9,38 @@
       "doc": "ISO 8601 formatted date/time of when the metric was collected, such as 2018-03-27T13:15:06.497Z"
     },
     {
-      "name": "tenantId",
+      "name": "accountType",
+      "type": {
+        "name": "AccountType",
+        "type": "enum",
+        "default": "UNKOWN",
+        "symbols": [
+          "UNKOWN",
+          "CORE",
+          "ENCORE"
+        ]
+      }
+    },
+    {
+      "name": "account",
       "type": "string"
     },
     {
-      "name": "systemAccountId",
-      "type": ["null", "string"],
-      "doc": "The originating monitoring system's ID for the tenant/account"
-    },
-    {
-      "name": "target",
+      "name": "device",
       "type": "string"
     },
-
-     {
-       "name": "available",
-       "type": {
-         "name": "Available",
-         "type": "record",
-         "fields": [
-           {
-             "name": "boolean",
-             "type": "boolean"
-           }
-         ]
-       }
-     },
+    {
+      "name": "deviceLabel",
+      "type": "string"
+    },
+    {
+      "name": "deviceMetadata",
+      "type": {
+        "name": "DeviceMetadata",
+        "type": "map",
+        "values": "string"
+      }
+    },
     {
       "name": "monitoringSystem",
       "doc": "The monitoring system that originated these metrics",
@@ -42,116 +48,65 @@
         "name": "MonitoringSystem",
         "type": "enum",
         "symbols": [
-          "MAAS"
+          "MAAS",
+          "UIM"
         ]
       }
     },
     {
-      "name": "check",
+      "name": "systemMetadata",
       "type": {
-        "name": "Check",
-        "type": "record",
-        "fields": [
-          {
-            "name": "systemId",
-            "type": "string",
-            "doc": "The monitoring system's specific identifier"
-          },
-          {
-            "name": "type",
-            "type": "string"
-          },
-          {
-            "name": "label",
-            "type": "string",
-            "default": ""
-          },
-          {
-            "name": "metadata",
-            "type": {
-              "name": "Metadata",
-              "type": "map",
-              "values": "string"
-            },
-            "default": {}
-          }
-        ]
+        "name": "SystemMetadata",
+        "type": "map",
+        "values": "string"
       }
     },
     {
-      "name": "entity",
+      "name": "collectionLabel",
+      "type": "string"
+    },
+    {
+      "name": "collectionTarget",
+      "type": "string"
+    },
+    {
+      "name": "collectionMetadata",
       "type": {
-        "name": "Entity",
-        "type": "record",
-        "fields": [
-          {
-            "name": "systemId",
-            "type": "string"
-          },
-          {
-            "name": "label",
-            "type": "string",
-            "default": ""
-          },
-          {
-            "name": "metadata",
-            "type": {
-              "name": "Metadata",
-              "type": "map",
-              "values": "string"
-            },
-            "default": {}
-          }
-        ]
+        "name": "CollectionMetadata",
+        "type": "map",
+        "values": "string"
       }
     },
     {
-      "name": "values",
+      "name": "ivalues",
       "type": {
-        "type": "array",
-        "name": "MetricsValues",
-        "items": {
-          "name": "MetricValue",
-          "type": "record",
-          "fields": [
-            {
-              "name": "name",
-              "type": "string"
-            },
-            {
-              "name": "units",
-              "type": "string",
-              "default": ""
-            },
-            {
-              "name": "value",
-              "type": [
-                "double",
-                "int",
-                "long",
-                "string"
-              ]
-            }
-          ]
-        }
+        "name": "IntegerValues",
+        "type": "map",
+        "values": "long"
       }
     },
     {
-      "name": "monitoringZone",
+      "name": "fvalues",
       "type": {
-        "name": "MonitoringZone",
-        "type": "record",
-        "fields": [
-          {
-            "name": "systemId",
-            "type": "string"
-          },
-          {
-            "name": "label",
-            "type": "string",
-            "default": ""
-          }
-        ]
+        "name": "FloatValues",
+        "type": "map",
+        "values": "double"
+      }
+    },
+    {
+      "name": "svalues",
+      "type": {
+        "name": "StringValues",
+        "type": "map",
+        "values": "string"
+      }
+    },
+    {
+      "name": "units",
+      "type": {
+        "name": "Units",
+        "type": "map",
+        "values": "string"
       }
     }
   ]
