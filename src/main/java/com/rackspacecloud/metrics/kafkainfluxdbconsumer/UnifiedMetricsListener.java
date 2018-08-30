@@ -19,7 +19,8 @@ import java.util.*;
 
 @Component
 public class UnifiedMetricsListener {
-    IAuthTokenProvider authTokenProvider;
+
+  IAuthTokenProvider authTokenProvider;
     RestTemplate restTemplate;
 
     private long messageProcessedCount = 0;
@@ -30,8 +31,10 @@ public class UnifiedMetricsListener {
     private static final String TIMESTAMP = "timestamp";
     private static final String COLLECTION_TIME = "collectionTime";
     private static final String TENANT_ID = "tenantId";
-    private static final String METRIC_VALUE = "metricValue";
-    private static final String METRIC_NAME = "metricName";
+    private static final String CHECK_TYPE = "checkType";
+    private static final String ACCOUNT_ID = "accountId";
+    private static final String MONITORING_ZONE = "monitoringZone";
+    private static final String ENTITY_ID = "entityId";
     private static final String TTL = "ttlInSeconds";
     private static final String X_AUTH_TOKEN = "x-auth-token";
     private static final String INFLUXDB_INGEST_URL_FORMAT = "%s/write?db=%s&rp=rp_3d";
@@ -82,17 +85,16 @@ public class UnifiedMetricsListener {
      * @param record
      */
     @KafkaListener(topics = "#{'${kafka.topics.in}'.split(',')}")
-    public boolean listen(Metrics record){
+    public boolean listen(Metric record){
         LOGGER.debug("Received record:{}", record);
 
         boolean isInfluxdbIngestionSuccessful = false;
 
-        if(!isValid(TENANT_ID, record.getTenantId(), record)) {
-            LOGGER.error("Invalid tenant ID [{}] in the received record [{}]", record.getTenantId(), record);
+        final String tenantId = record.getSystemMetadata().get(TENANT_ID);
+        if(!isValid(TENANT_ID, tenantId, record)) {
+            LOGGER.error("Invalid tenant ID [{}] in the received record [{}]", tenantId, record);
             return false;
         }
-
-        String tenantId = record.getTenantId().toString();
 
 //        // TODO: DELETE IT AFTER TEST
 //        tenantId = getNextTenantId();
@@ -259,13 +261,11 @@ public class UnifiedMetricsListener {
      * @param record
      * @return
      */
-    private String convertToInfluxdbIngestFormat(Metrics record){
+    private String convertToInfluxdbIngestFormat(Metric record){
 
         if(!isValid(TIMESTAMP, record.getTimestamp(), record)) return null;
 
-        if(record.getCheck() == null) return null;
-
-        String measurementName = record.getCheck().getType().toString().replace('.','_');
+        if(record.getSystemMetadata().get(CHECK_TYPE) == null) return null;
 
         TagAndFieldsSets tagAndFieldsSets = getTagAndFieldsSets(record);
         if (tagAndFieldsSets == null) return null;
@@ -275,7 +275,7 @@ public class UnifiedMetricsListener {
         // Convert into nano seconds
         long collectionTime = instant.getEpochSecond()*1000*1000*1000 + instant.getNano();
 
-        String payload = createPayload(record, collectionTime, tagAndFieldsSets, measurementName);
+        String payload = createPayload(record, collectionTime, tagAndFieldsSets);
         if (payload == null) {
             LOGGER.error("There is no payload for influxdb. Record:[{}]", record);
             return null;
@@ -284,64 +284,54 @@ public class UnifiedMetricsListener {
         return payload;
     }
 
-    private TagAndFieldsSets getTagAndFieldsSets(Metrics record) {
+    private TagAndFieldsSets getTagAndFieldsSets(Metric record) {
         TagAndFieldsSets tagAndFieldsSets = new TagAndFieldsSets();
 
         Set<String> tagSet = tagAndFieldsSets.tagSet;
 
-        if(!StringUtils.isEmpty(record.getSystemAccountId()))
+        if(!StringUtils.isEmpty(record.getSystemMetadata().get(ACCOUNT_ID)))
             tagSet.add(String.format("systemaccountid=\"%s\"",
-                    escapeSpecialCharactersForInfluxdb(record.getSystemAccountId().toString().trim())));
+                    escapeSpecialCharactersForInfluxdb(record.getSystemMetadata().get(ACCOUNT_ID).trim())));
 
-        if(!StringUtils.isEmpty(record.getTarget().toString()))
+        if(!StringUtils.isEmpty(record.getCollectionTarget()))
             tagSet.add(String.format("target=%s",
-                    escapeSpecialCharactersForInfluxdb(record.getTarget().toString().trim())));
+                    escapeSpecialCharactersForInfluxdb(record.getCollectionTarget().trim())));
 
         if(!StringUtils.isEmpty(record.getMonitoringSystem().toString()))
             tagSet.add(String.format("monitoringsystem=%s",
                     escapeSpecialCharactersForInfluxdb(record.getMonitoringSystem().toString().trim())));
 
-        addCheck(record.getCheck(), tagAndFieldsSets);
+        addCheck(record, tagAndFieldsSets);
         addEntityTags(record, tagAndFieldsSets);
         addMonitoringZone(record, tagAndFieldsSets);
 
         return tagAndFieldsSets;
     }
 
-    private void addCheck(Check check, TagAndFieldsSets tagAndFieldsSets) {
-        if(!StringUtils.isEmpty(check.getSystemId().toString()))
-            tagAndFieldsSets.tagSet.add(String.format("checksystemid=\"%s\"",
-                    escapeSpecialCharactersForInfluxdb(check.getSystemId().toString().trim())));
-
-        if(!StringUtils.isEmpty(check.getLabel().toString()))
-            tagAndFieldsSets.tagSet.add(String.format("checklabel=%s",
-                    escapeSpecialCharactersForInfluxdb(check.getLabel().toString().trim())));
+    private void addCheck(Metric check, TagAndFieldsSets tagAndFieldsSets) {
+        if(!StringUtils.isEmpty(check.getCollectionLabel()))
+            tagAndFieldsSets.tagSet.add(String.format("collectionlabel=%s",
+                    escapeSpecialCharactersForInfluxdb(check.getCollectionLabel().trim())));
     }
 
-    private void addMonitoringZone(Metrics record, TagAndFieldsSets tagAndFieldsSets) {
-        if(record.getMonitoringZone() != null){
-            MonitoringZone monitoringZone = record.getMonitoringZone();
-            if(!StringUtils.isEmpty(monitoringZone.getSystemId().toString()))
-                tagAndFieldsSets.tagSet.add(String.format("monitoringzonesystemid=\"%s\"",
-                        escapeSpecialCharactersForInfluxdb(monitoringZone.getSystemId().toString().trim())));
-
-            if(!StringUtils.isEmpty(monitoringZone.getLabel().toString()))
-                tagAndFieldsSets.tagSet.add(String.format("monitoringzonelabel=%s",
-                        escapeSpecialCharactersForInfluxdb(monitoringZone.getLabel().toString().trim())));
+    private void addMonitoringZone(Metric record, TagAndFieldsSets tagAndFieldsSets) {
+      final String monitoringZone = record.getSystemMetadata().get(MONITORING_ZONE);
+      if(!StringUtils.isEmpty(monitoringZone)){
+                tagAndFieldsSets.tagSet.add(String.format("monitoringzone=\"%s\"",
+                        escapeSpecialCharactersForInfluxdb(
+                            monitoringZone.trim())));
         }
     }
 
-    private void addEntityTags(Metrics record, TagAndFieldsSets tagAndFieldsSets) {
-        if(record.getEntity() != null){
-            Entity entity = record.getEntity();
-            if(!StringUtils.isEmpty(entity.getSystemId().toString()))
-                tagAndFieldsSets.tagSet.add(String.format("entitysystemid=\"%s\"",
-                        escapeSpecialCharactersForInfluxdb(entity.getSystemId().toString().trim())));
+    private void addEntityTags(Metric record, TagAndFieldsSets tagAndFieldsSets) {
+        final String entityId = record.getSystemMetadata().get(ENTITY_ID);
+        if(!StringUtils.isEmpty(entityId))
+            tagAndFieldsSets.tagSet.add(String.format("entitysystemid=\"%s\"",
+                    escapeSpecialCharactersForInfluxdb(entityId.trim())));
 
-            if(!StringUtils.isEmpty(entity.getLabel().toString()))
-                tagAndFieldsSets.tagSet.add(String.format("entitylabel=%s",
-                        escapeSpecialCharactersForInfluxdb(entity.getLabel().toString().trim())));
-        }
+        if(!StringUtils.isEmpty(record.getDeviceLabel()))
+            tagAndFieldsSets.tagSet.add(String.format("devicelabel=%s",
+                    escapeSpecialCharactersForInfluxdb(record.getDeviceLabel().trim())));
     }
 
     private String escapeSpecialCharactersForInfluxdb(String inputString){
@@ -367,36 +357,22 @@ public class UnifiedMetricsListener {
     }
 
     private String createPayload(
-            final Metrics record, final long collectionTime,
-            final TagAndFieldsSets tagAndFieldsSets, final String measurementName) {
+        final Metric record, final long collectionTime,
+        final TagAndFieldsSets tagAndFieldsSets) {
 
         List<String> payload = new ArrayList<>();
 
-        for(MetricValue value : record.getValues()){
-            Set<String> tempTagSet = new HashSet<>(tagAndFieldsSets.tagSet);
-            Set<String> tempFieldSet = new HashSet<>(tagAndFieldsSets.fieldSet);
-
-            try {
-                tempTagSet.add(String.format("name=%s",
-                        escapeSpecialCharactersForInfluxdb(value.getName().toString().trim())));
-
-                if(!StringUtils.isEmpty(value.getUnits()))
-                    tempTagSet.add(String.format("units=%s",
-                            escapeSpecialCharactersForInfluxdb(value.getUnits().toString().trim())));
-
-                double val = Double.parseDouble(value.getValue().toString());
-                tempFieldSet.add(String.format("metricvalue=%s", val));
-
-                String tagSetString = String.join(",", tempTagSet);
-                String fieldSetString = String.join(",", tempFieldSet);
-
-                // payload item's string format is to create the line protocol. So, spaces and comma are there for a reason.
-                String payloadItem = String.format("%s,%s %s %s", measurementName, tagSetString, fieldSetString, collectionTime);
-
-                payload.add(payloadItem);
-            } catch(NumberFormatException e){
-                // Skip the metric item as there is no value to put.
-            }
+        for(Map.Entry<String, Long> entry : record.getIvalues().entrySet()){
+            addValueTo(payload, collectionTime, tagAndFieldsSets,
+                entry.getKey(),
+                entry.getValue().doubleValue(),
+                record.getUnits().get(entry.getKey()));
+        }
+        for(Map.Entry<String, Double> entry : record.getFvalues().entrySet()){
+            addValueTo(payload, collectionTime, tagAndFieldsSets,
+                entry.getKey(),
+                entry.getValue(),
+                record.getUnits().get(entry.getKey()));
         }
 
         if(payload.size() == 0) return null;
@@ -404,7 +380,32 @@ public class UnifiedMetricsListener {
         return String.join("\n",payload);
     }
 
-    private boolean isValid(String fieldName, CharSequence fieldValue, Metrics record){
+    private void addValueTo(List<String> payload, long collectionTime,
+        TagAndFieldsSets tagAndFieldsSets,
+        String metricName, double value, String units) {
+        Set<String> tempTagSet = new HashSet<>(tagAndFieldsSets.tagSet);
+        Set<String> tempFieldSet = new HashSet<>(tagAndFieldsSets.fieldSet);
+
+        try {
+            if(!StringUtils.isEmpty(units))
+                tempTagSet.add(String.format("units=%s",
+                        escapeSpecialCharactersForInfluxdb(units)));
+
+            tempFieldSet.add(String.format("metricvalue=%f", value));
+
+            String tagSetString = String.join(",", tempTagSet);
+            String fieldSetString = String.join(",", tempFieldSet);
+
+            // payload item's string format is to create the line protocol. So, spaces and comma are there for a reason.
+            String payloadItem = String.format("%s,%s %s %s", metricName, tagSetString, fieldSetString, collectionTime);
+
+            payload.add(payloadItem);
+        } catch(NumberFormatException e){
+            // Skip the metric item as there is no value to put.
+        }
+    }
+
+    private boolean isValid(String fieldName, CharSequence fieldValue, Metric record){
         if(StringUtils.isEmpty(fieldValue)){
             LOGGER.error("There is no value for the field '{}' in record [{}]", fieldName, record);
             return false;

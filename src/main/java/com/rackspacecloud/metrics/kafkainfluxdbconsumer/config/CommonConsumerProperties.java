@@ -1,6 +1,6 @@
 package com.rackspacecloud.metrics.kafkainfluxdbconsumer.config;
 
-import com.rackspace.maas.model.Metrics;
+import com.rackspace.maas.model.Metric;
 import com.rackspacecloud.metrics.kafkainfluxdbconsumer.serializer.AvroDeserializer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -33,9 +33,9 @@ public class CommonConsumerProperties {
     }
 
     @Bean
-    ConsumerFactory<String, Metrics> consumerFactory(){
+    ConsumerFactory<String, Metric> consumerFactory(){
         return new DefaultKafkaConsumerFactory<>(consumerProperties(),
                 new StringDeserializer(),
-                new AvroDeserializer<>(Metrics.class));
+                new AvroDeserializer<>(Metric.class));
     }
 }

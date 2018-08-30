@@ -1,6 +1,6 @@
 package com.rackspacecloud.metrics.kafkainfluxdbconsumer.config;
 
-import com.rackspace.maas.model.Metrics;
+import com.rackspace.maas.model.Metric;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -15,11 +15,11 @@ import org.springframework.kafka.core.ConsumerFactory;
 public class ConsumerConfiguration {
 
     @Autowired
-    ConsumerFactory<String, Metrics> consumerFactory;
+    ConsumerFactory<String, Metric> consumerFactory;
 
     @Bean
-    ConcurrentKafkaListenerContainerFactory<String, Metrics> kafkaListenerContainerFactory(){
-        ConcurrentKafkaListenerContainerFactory<String, Metrics> factory =
+    ConcurrentKafkaListenerContainerFactory<String, Metric> kafkaListenerContainerFactory(){
+        ConcurrentKafkaListenerContainerFactory<String, Metric> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
 
         factory.setConsumerFactory(consumerFactory);
