@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 
 @Configuration
 @EnableKafka
@@ -23,6 +24,7 @@ public class ConsumerConfiguration {
                 new ConcurrentKafkaListenerContainerFactory<>();
 
         factory.setConsumerFactory(consumerFactory);
+        factory.getContainerProperties().setAckMode(AbstractMessageListenerContainer.AckMode.MANUAL);
 
         return factory;
     }

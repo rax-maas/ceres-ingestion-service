@@ -73,6 +73,8 @@ kafka:
 
   topics:
     in: maas.metrics.json
+    partition: 0
+    offset: 0
 
   consumer:
       group: influxdb-consumer-group
@@ -121,6 +123,8 @@ kafka:
 
   topics:
     in: maas.metrics.json
+    partition: 0
+    offset: 0
 
   consumer:
     group: influxdb-consumer-group

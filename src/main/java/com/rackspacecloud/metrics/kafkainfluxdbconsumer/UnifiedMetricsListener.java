@@ -9,6 +9,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.annotation.PartitionOffset;
+import org.springframework.kafka.annotation.TopicPartition;
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.HttpClientErrorException;
@@ -81,11 +87,20 @@ public class UnifiedMetricsListener {
     }
 
     /**
-     * This listener listens to unified_metrics.json topic.
+     * This listener listens to maas_metrics.json topic.
      * @param record
      */
-    @KafkaListener(topics = "#{'${kafka.topics.in}'.split(',')}")
-    public boolean listen(Metric record){
+    @KafkaListener(topicPartitions = @TopicPartition(topic = "${kafka.topics.in}",
+            partitionOffsets = {
+                    @PartitionOffset(
+                            partition = "${kafka.topics.partition}",
+                            initialOffset = "${kafka.topics.offset}"
+                    )}))
+    public boolean listen(
+            @Payload final Metric record,
+            @Header(KafkaHeaders.RECEIVED_PARTITION_ID) final int partitionId,
+            @Header(KafkaHeaders.OFFSET) final long offset,
+            final Acknowledgment ack){
         LOGGER.debug("Received record:{}", record);
 
         boolean isInfluxdbIngestionSuccessful = false;
@@ -109,6 +124,15 @@ public class UnifiedMetricsListener {
 
             if (payload != null) {
                 isInfluxdbIngestionSuccessful = ingestToInfluxdb(payload, influxdbInfo);
+
+                if(isInfluxdbIngestionSuccessful) {
+                    ack.acknowledge();
+                    LOGGER.info("Successfully processed partionId:{}, offset:{} at {}", partitionId, offset, Instant.now());
+                }
+                else {
+                    // TODO: retry? OR write messages into some 'maas_metrics_error' topic, so that later on
+                    // we can read it from that error topic
+                }
             }
         }
         catch(Exception e){
