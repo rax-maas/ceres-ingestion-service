@@ -154,7 +154,7 @@ public class UnifiedMetricsListener {
 
     private boolean createDatabase(final InfluxdbInfo influxdbInfo) {
         String dbCreatePayload = String.format("q=CREATE DATABASE \"%s\" WITH DURATION %s NAME \"%s\"",
-                influxdbInfo.databaseName, "3d", "rp_3d");
+                influxdbInfo.databaseName, "5d", "rp_5d");
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -405,15 +405,15 @@ public class UnifiedMetricsListener {
     }
 
     private void addValueTo(List<String> payload, long collectionTime,
-        TagAndFieldsSets tagAndFieldsSets,
-        String metricName, double value, String units) {
+                            TagAndFieldsSets tagAndFieldsSets,
+                            String metricName, double value, String units) {
+
         Set<String> tempTagSet = new HashSet<>(tagAndFieldsSets.tagSet);
         Set<String> tempFieldSet = new HashSet<>(tagAndFieldsSets.fieldSet);
 
         try {
             if(!StringUtils.isEmpty(units))
-                tempTagSet.add(String.format("units=%s",
-                        escapeSpecialCharactersForInfluxdb(units)));
+                tempTagSet.add(String.format("units=%s", escapeSpecialCharactersForInfluxdb(units)));
 
             tempFieldSet.add(String.format("metricvalue=%f", value));
 
@@ -421,7 +421,8 @@ public class UnifiedMetricsListener {
             String fieldSetString = String.join(",", tempFieldSet);
 
             // payload item's string format is to create the line protocol. So, spaces and comma are there for a reason.
-            String payloadItem = String.format("%s,%s %s %s", metricName, tagSetString, fieldSetString, collectionTime);
+            String payloadItem = String.format("%s,%s %s %s",
+                    replaceSpecialCharacters(metricName), tagSetString, fieldSetString, collectionTime);
 
             payload.add(payloadItem);
         } catch(NumberFormatException e){
