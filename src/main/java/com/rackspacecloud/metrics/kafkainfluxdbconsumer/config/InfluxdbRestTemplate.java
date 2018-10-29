@@ -1,6 +1,5 @@
 package com.rackspacecloud.metrics.kafkainfluxdbconsumer.config;
 
-import com.rackspacecloud.metrics.kafkainfluxdbconsumer.provider.AuthTokenProvider;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -63,11 +62,5 @@ public class InfluxdbRestTemplate {
         HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory();
         requestFactory.setHttpClient(httpClient);
         return new RestTemplate(requestFactory);
-    }
-
-    @Bean
-    public AuthTokenProvider authTokenProvider(RestTemplate restTemplate){
-        AuthTokenProvider authTokenProvider = new AuthTokenProvider(restTemplate, config);
-        return authTokenProvider;
     }
 }

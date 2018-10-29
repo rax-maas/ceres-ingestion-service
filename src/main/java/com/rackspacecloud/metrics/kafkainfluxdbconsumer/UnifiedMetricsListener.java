@@ -1,7 +1,7 @@
 package com.rackspacecloud.metrics.kafkainfluxdbconsumer;
 
 import com.rackspace.maas.model.*;
-import com.rackspacecloud.metrics.kafkainfluxdbconsumer.provider.IAuthTokenProvider;
+import com.rackspacecloud.metrics.kafkainfluxdbconsumer.models.TenantRoute;
 import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,8 +25,6 @@ import java.util.*;
 
 @Component
 public class UnifiedMetricsListener {
-
-  IAuthTokenProvider authTokenProvider;
     RestTemplate restTemplate;
 
     private long messageProcessedCount = 0;
@@ -43,17 +41,16 @@ public class UnifiedMetricsListener {
     private static final String ENTITY_ID = "entityId";
     private static final String TTL = "ttlInSeconds";
     private static final String X_AUTH_TOKEN = "x-auth-token";
-    private static final String INFLUXDB_INGEST_URL_FORMAT = "%s/write?db=%s&rp=rp_3d";
+    private static final String INFLUXDB_INGEST_URL_FORMAT = "%s/write?db=%s&rp=rp_5d";
     private static final int TTL_IN_SECONDS = 172800;
     private static final int MAX_TRY_FOR_INGEST = 5;
     private static Map<String, InfluxdbInfo> influxDbInfoMap;
 
-    // TODO: Delete it once test is done
-    // private static final int MAX_DATABASE_COUNT_FOR_TEST = 50;
-    private int databaseCountForTest = 0;
-
     @Value("${influxdb.url}")
     private String influxdbUrl;
+
+    @Value("${tenant-routing-service.url}")
+    String tenantRoutingServiceUrl;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UnifiedMetricsListener.class);
 
@@ -80,8 +77,7 @@ public class UnifiedMetricsListener {
     }
 
     @Autowired
-    public UnifiedMetricsListener(IAuthTokenProvider authTokenProvider, RestTemplate restTemplate){
-        this.authTokenProvider = authTokenProvider;
+    public UnifiedMetricsListener(RestTemplate restTemplate){
         this.restTemplate = restTemplate;
         influxDbInfoMap = new HashMap<>();
     }
@@ -110,9 +106,6 @@ public class UnifiedMetricsListener {
             LOGGER.error("Invalid tenant ID [{}] in the received record [{}]", tenantId, record);
             return false;
         }
-
-//        // TODO: DELETE IT AFTER TEST
-//        tenantId = getNextTenantId();
 
         // Get db and URL info to route data to
         InfluxdbInfo influxdbInfo = getInfluxdbInfo(tenantId);
@@ -179,32 +172,31 @@ public class UnifiedMetricsListener {
 
     private InfluxdbInfo getInfluxdbInfo(String tenantId) {
         if(influxDbInfoMap.containsKey(tenantId)) return influxDbInfoMap.get(tenantId);
-        int port = getRoute(tenantId);
-
-        String baseUrl = String.format("%s:%d", influxdbUrl, port);
-//        String baseUrl = "http://localhost:8086";
 
         String cleanedTenantId = replaceSpecialCharacters(tenantId);
-        String databaseName = "db_" + cleanedTenantId;
+        TenantRoute tenantRoute = getRoute(cleanedTenantId);
 
-        InfluxdbInfo influxDbInfo = new InfluxdbInfo(baseUrl, databaseName);
+//        String databaseName = "db_" + cleanedTenantId;
+
+        InfluxdbInfo influxDbInfo = new InfluxdbInfo(tenantRoute.getPath(), tenantRoute.getDatabaseName());
         influxDbInfoMap.put(tenantId, influxDbInfo);
         return influxDbInfo;
     }
 
-    private int getRoute(String tenantId) {
-//        // TODO: Work on routing given tenant to specific Influxdb instance
-//        return (databaseCountForTest < (MAX_DATABASE_COUNT_FOR_TEST / 2)) ? 81 : 80;
+    private TenantRoute getRoute(String tenantId) {
+        String requestUrl = String.format("%s/%s", tenantRoutingServiceUrl, tenantId);
+        LOGGER.info("tenant-routing-service url: {}", requestUrl);
+        return restTemplate.getForObject(requestUrl, TenantRoute.class);
 
-        // TODO: Temporary routing solution.
-        return ((tenantId.hashCode())%2 == 0) ? 80 : 81;
+
+
+        //String.format("%s:%d", influxdbUrl, port);
+        //String baseUrl = "http://localhost:8086";
+        // TODO: Work on routing given tenant to specific Influxdb instance
+        //return ((tenantId.hashCode())%2 == 0) ? 80 : 81;
+//        return "http://data-influxdb:8086";
+//        return "http://localhost:8086";
     }
-
-//    // TODO: JUST FOR TESTING NUMBER OF DATABASES PER INSTANCE
-//    private String getNextTenantId(){
-//        if(databaseCountForTest == MAX_DATABASE_COUNT_FOR_TEST) databaseCountForTest = 0;
-//        return "" + databaseCountForTest++;
-//    }
 
     /**
      * Get the current count of the total message processed by the consumer
@@ -224,8 +216,6 @@ public class UnifiedMetricsListener {
         List<MediaType> mediaTypes = new ArrayList<>();
         mediaTypes.add(MediaType.TEXT_PLAIN);
         headers.setAccept(mediaTypes);
-
-//        headers.set(X_AUTH_TOKEN, authTokenProvider.getAuthToken());
 
         HttpEntity<String> request = new HttpEntity<>(payload, headers);
 

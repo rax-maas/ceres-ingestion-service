@@ -1,43 +1,5 @@
 server:
   port: 8080
----
-spring:
-  profiles: test
-
-rest-template:
-  request-config:
-    connection-request-timeout: 120000  # timeout when requesting a connection from the connection manager
-    connect-timeout: 120000             # timeout until a connection is established
-    socket-timeout: 120000              # timeout for waiting for data
-
-  pooling-http-client-connection-manager:
-    max-total: 20 # Max number of connection to pool
-
-  credential:
-    user:
-    api-key:
-    identity-url:
-
-  seconds-to-token-expiration-time: 3600
-
-kafka:
-  servers:
-
-  topics:
-    in:
-
-  consumer:
-      group: influxdb-consumer-group
-
-influxdb:
-  url:
-
-logging:
-  level:
-    com.rackspacecloud: debug
-    org.springframework:
-      web: info
-      kafka.listener: DEBUG
 
 ---
 spring:
@@ -50,7 +12,7 @@ rest-template:
     socket-timeout: 120000              # timeout for waiting for data
 
   pooling-http-client-connection-manager:
-    max-total: 20 # Max number of connection to pool
+    max-total: 5 # Max number of connection to pool
 
   credential:
     user: ${REST_TEMPLATE_USER}
@@ -60,7 +22,7 @@ rest-template:
   seconds-to-token-expiration-time: 3600
 
 kafka:
-  servers: ${KAFKA_SERVERS}
+  servers: ${KAFKA_SERVERS_TEST}
 
   ssl:
     truststore-location: ${TRUSTSTORE_LOCATION}
@@ -80,7 +42,10 @@ kafka:
       group: influxdb-consumer-group
 
 influxdb:
-  url: ${INFLUXDB_URL}
+  url: ${INFLUXDB_URL_TEST}
+
+tenant-routing-service:
+  url: ${TENANT_ROUTING_SERVICE_URL}
 
 logging:
   level:
@@ -131,6 +96,9 @@ kafka:
 
 influxdb:
   url: ${INFLUXDB_URL}
+
+tenant-routing-service:
+  url: ${TENANT_ROUTING_SERVICE_URL}
 
 logging:
   level:
