@@ -25,7 +25,7 @@ public class CommonConsumerProperties {
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, configurationProperties.getServers());
         props.put(ConsumerConfig.GROUP_ID_CONFIG, configurationProperties.getConsumer().getGroup());
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-        props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 15000);
+        props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 15000); //TODO: Remove this hard-coded value and put it in yaml file
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, AvroDeserializer.class);
 
