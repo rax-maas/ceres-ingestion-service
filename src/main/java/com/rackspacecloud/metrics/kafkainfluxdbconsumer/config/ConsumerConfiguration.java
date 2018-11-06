@@ -28,4 +28,16 @@ public class ConsumerConfiguration {
 
         return factory;
     }
+
+    @Bean
+    ConcurrentKafkaListenerContainerFactory<String, Metric> batchFactory(){
+        ConcurrentKafkaListenerContainerFactory<String, Metric> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+
+        factory.setConsumerFactory(consumerFactory);
+        factory.setBatchListener(true);
+        factory.getContainerProperties().setAckMode(AbstractMessageListenerContainer.AckMode.MANUAL);
+
+        return factory;
+    }
 }

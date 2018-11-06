@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 public class UnifiedMetricsListener {
     private InfluxDBHelper influxDBHelper;
 
-    private long messageProcessedCount = 0;
+    private long batchProcessedCount = 0;
 
     // At the end of every 1000 messages, log this information
     private static final int MESSAGE_PROCESS_REPORT_COUNT = 1000;
@@ -49,85 +49,109 @@ public class UnifiedMetricsListener {
         this.influxDBHelper = new InfluxDBHelper(restTemplate, routeProvider);
     }
 
+//    @KafkaListener(topicPartitions = @TopicPartition(topic = "${kafka.topics.in}",
+//            partitionOffsets = {
+//                    @PartitionOffset(
+//                            partition = "${kafka.topics.partition}",
+//                            initialOffset = "${kafka.topics.offset}"
+//                    )}), containerFactory = "batchFactory")
+//    public void listen(List<Metric> messages, @Header(KafkaHeaders.RECEIVED_PARTITION_ID) final int partitionId,
+//                       @Header(KafkaHeaders.OFFSET) final long offset, Acknowledgment ack) {
+//        LOGGER.debug("Received partitionId:; Offset:; record:{}", messages);
+//        batchProcessedCount++;
+//    }
+
     /**
      * This listener listens to unified.metrics.json topic.
-     * @param record
+     * @param records
      */
-    @KafkaListener(topicPartitions = @TopicPartition(topic = "${kafka.topics.in}",
-            partitionOffsets = {
-                    @PartitionOffset(
-                            partition = "${kafka.topics.partition}",
-                            initialOffset = "${kafka.topics.offset}"
-                    )}))
+    @KafkaListener(topics = "${kafka.topics.in}", containerFactory = "batchFactory")
     public boolean listenUnifiedMetricsTopic(
-            @Payload final Metric record,
+            @Payload final List<Metric> records,
             @Header(KafkaHeaders.RECEIVED_PARTITION_ID) final int partitionId,
             @Header(KafkaHeaders.OFFSET) final long offset,
-            final Acknowledgment ack){
+            final Acknowledgment ack) {
 
-        LOGGER.debug("Received partitionId:{}; Offset:{}; record:{}", partitionId, offset, record);
-        messageProcessedCount++;
+        batchProcessedCount++;
 
-        final String tenantId = record.getSystemMetadata().get(TENANT_ID);
-        if(!isValid(TENANT_ID, tenantId, record)) {
-            LOGGER.error("Invalid tenant ID [{}] in the received record [{}]", tenantId, record);
-            return false;
-        }
-
-        Point point = convertToInfluxdbPoint(record);
+        Map<String, List<String>> tenantPayloadsMap = getTenantPayloadsMap(partitionId, offset, records);
 
         // TODO: Check for it we may need to add retentionPolicy information to store in Redis database
         String retentionPolicyName = "rp_5d";
         String retentionPolicy = "5d";
 
-        boolean isInfluxdbIngestionSuccessful = false;
+        boolean isInfluxdbIngestionSuccessful = true;
 
-        try {
-            if (point != null) {
-                String payload = point.lineProtocol(TimeUnit.SECONDS);
-
+        for(Map.Entry<String, List<String>> entry : tenantPayloadsMap.entrySet()) {
+            String tenantId = entry.getKey();
+            String payload = String.join("\n", entry.getValue());
+            try {
                 // cleanup tenantId by replacing any special character with "_" before passing it to the function
                 isInfluxdbIngestionSuccessful = influxDBHelper.ingestToInfluxdb(
                         payload, replaceSpecialCharacters(tenantId), retentionPolicy, retentionPolicyName);
 
-                if(isInfluxdbIngestionSuccessful) {
-                    ack.acknowledge();
-                    LOGGER.debug("Successfully processed partionId:{}, offset:{} at {}",
-                            partitionId, offset, Instant.now());
-
-                    if(messageProcessedCount % MESSAGE_PROCESS_REPORT_COUNT == 0) {
-                        LOGGER.info("Processed {} messages. Successfully ingested current payload in Influxdb -> {}",
-                                messageProcessedCount, payload);
-                    }
-                }
-                else {
-                    // TODO: retry? OR write messages into some 'maas_metrics_error' topic, so that later on
-                    // we can read it from that error topic
-                }
+                if(!isInfluxdbIngestionSuccessful) break;
+            } catch (Exception e) {
+                LOGGER.error("Ingest failed for payload [{}] with exception message [{}]", payload, e.getMessage());
             }
         }
-        catch(Exception e){
-            LOGGER.error("listen method failed for record [{}] with exception message [{}]", record, e.getMessage());
+
+        if (isInfluxdbIngestionSuccessful) {
+            ack.acknowledge();
+            LOGGER.debug("Successfully processed partionId:{}, offset:{} at {}",
+                    partitionId, offset, Instant.now());
+
+            if (batchProcessedCount % MESSAGE_PROCESS_REPORT_COUNT == 0) {
+                LOGGER.info("Processed {} batches.", batchProcessedCount);
+            }
+        } else {
+            LOGGER.error("FAILED at {}: partionId:{}, offset:{}, processing a batch of given records [{}]",
+                    Instant.now(), partitionId, offset, records);
+            // TODO: retry? OR write messages into some 'maas_metrics_error' topic, so that later on
+            // we can read it from that error topic
         }
 
-        LOGGER.debug("Done processing for record:{}", record);
+        LOGGER.debug("Done processing for records:{}", records);
 
         // Reset the counter
-        if(messageProcessedCount == Long.MAX_VALUE) messageProcessedCount = 0;
+        if(batchProcessedCount == Long.MAX_VALUE) batchProcessedCount = 0;
 
-        if(messageProcessedCount % MESSAGE_PROCESS_REPORT_COUNT == 0) {
-            LOGGER.info("Processed {} messages so far after start or reset...", getMessageProcessedCount());
+        if(batchProcessedCount % MESSAGE_PROCESS_REPORT_COUNT == 0) {
+            LOGGER.info("Processed {} batches so far after start or reset...", getBatchProcessedCount());
         }
 
         return isInfluxdbIngestionSuccessful;
+    }
+
+    private Map<String, List<String>> getTenantPayloadsMap(int partitionId, long offset, List<Metric> records){
+        Map<String, List<String>> tenantPayloadMap = new HashMap<>();
+
+        for(Metric record : records) {
+            LOGGER.debug("Received partitionId:{}; Offset:{}; record:{}", partitionId, offset, record);
+
+            String tenantId = record.getSystemMetadata().get(TENANT_ID);
+            if (!isValid(TENANT_ID, tenantId, record)) {
+                LOGGER.error("Invalid tenant ID [{}] in the received record [{}]", tenantId, record);
+                throw new IllegalArgumentException(String.format("Invalid tenant Id: [%s]", tenantId));
+            }
+
+            Point point = convertToInfluxdbPoint(record);
+
+            if(!tenantPayloadMap.containsKey(tenantId)) tenantPayloadMap.put(tenantId, new ArrayList<>());
+
+            List<String> payloads = tenantPayloadMap.get(tenantId);
+            payloads.add(point.lineProtocol(TimeUnit.SECONDS));
+        }
+
+        return tenantPayloadMap;
     }
 
     /**
      * Get the current count of the total message processed by the consumer
      * @return
      */
-    public long getMessageProcessedCount(){
-        return messageProcessedCount;
+    public long getBatchProcessedCount(){
+        return batchProcessedCount;
     }
 
     /**
