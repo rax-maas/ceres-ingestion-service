@@ -8,6 +8,16 @@ import java.util.List;
 @ConfigurationProperties("kafka")
 public class ConsumerConfigurationProperties {
     private List<String> servers;
+    private long listenerContainerIdleInterval;
+    private int sessionTimeoutMsConfig;
+
+    public int getSessionTimeoutMsConfig() {
+        return sessionTimeoutMsConfig;
+    }
+
+    public void setSessionTimeoutMsConfig(int sessionTimeoutMsConfig) {
+        this.sessionTimeoutMsConfig = sessionTimeoutMsConfig;
+    }
 
     public List<String> getServers(){
         return servers;
@@ -15,6 +25,14 @@ public class ConsumerConfigurationProperties {
 
     public void setServers(String servers){
         this.servers = Arrays.asList(servers.split(";"));
+    }
+
+    public long getListenerContainerIdleInterval() {
+        return listenerContainerIdleInterval;
+    }
+
+    public void setListenerContainerIdleInterval(long listenerContainerIdleInterval) {
+        this.listenerContainerIdleInterval = listenerContainerIdleInterval;
     }
 
     private Properties properties = new Properties();

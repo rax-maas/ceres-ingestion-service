@@ -4,13 +4,13 @@ import com.rackspace.maas.model.Metric;
 import com.rackspacecloud.metrics.kafkainfluxdbconsumer.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.kafkainfluxdbconsumer.influxdb.Point;
 import com.rackspacecloud.metrics.kafkainfluxdbconsumer.providers.IRouteProvider;
+import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.annotation.PartitionOffset;
-import org.springframework.kafka.annotation.TopicPartition;
+import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
@@ -24,7 +24,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 @Component
-public class UnifiedMetricsListener {
+public class UnifiedMetricsListener implements ConsumerSeekAware {
     private InfluxDBHelper influxDBHelper;
 
     private long batchProcessedCount = 0;
@@ -90,10 +90,12 @@ public class UnifiedMetricsListener {
                 isInfluxdbIngestionSuccessful = influxDBHelper.ingestToInfluxdb(
                         payload, replaceSpecialCharacters(tenantId), retentionPolicy, retentionPolicyName);
 
-                if(!isInfluxdbIngestionSuccessful) break;
             } catch (Exception e) {
+                isInfluxdbIngestionSuccessful = false;
                 LOGGER.error("Ingest failed for payload [{}] with exception message [{}]", payload, e.getMessage());
             }
+
+            if(!isInfluxdbIngestionSuccessful) break;
         }
 
         if (isInfluxdbIngestionSuccessful) {
@@ -278,5 +280,26 @@ public class UnifiedMetricsListener {
         }
 
         return true;
+    }
+
+    @Override
+    public void registerSeekCallback(ConsumerSeekCallback consumerSeekCallback) {
+        LOGGER.info("Registering seekCallback at [{}]", Instant.now());
+    }
+
+    @Override
+    public void onPartitionsAssigned(Map<TopicPartition, Long> map, ConsumerSeekCallback consumerSeekCallback) {
+        for(TopicPartition topicPartition : map.keySet()) {
+            String topic = topicPartition.topic();
+            int partition = topicPartition.partition();
+            long offset = map.get(topicPartition);
+            LOGGER.info("At Partition assignment for topic [{}], partition [{}], offset is at [{}] at time [{}]",
+                    topic, partition, offset, Instant.now());
+        }
+    }
+
+    @Override
+    public void onIdleContainer(Map<TopicPartition, Long> map, ConsumerSeekCallback consumerSeekCallback) {
+        LOGGER.info("Listener container is idle at [{}]", Instant.now());
     }
 }

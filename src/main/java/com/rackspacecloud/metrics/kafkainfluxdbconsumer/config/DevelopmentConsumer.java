@@ -1,6 +1,5 @@
 package com.rackspacecloud.metrics.kafkainfluxdbconsumer.config;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -8,13 +7,15 @@ import org.springframework.context.annotation.Profile;
 import java.util.Map;
 
 @Configuration
-@Profile("production")
-@EnableConfigurationProperties(ConsumerConfigurationProperties.class)
-public class ProductionConsumerProperties extends CommonConsumerProperties {
+@Profile("development")
+public class DevelopmentConsumer extends CommonConsumer {
 
-    @Autowired
-    ConsumerConfigurationProperties configurationProperties;
+//    @Override
+//    Map<String, Object> consumerProperties() {
+//        return super.consumerProperties();
+//    }
 
+    // TODO: REMOVE FOLLOWING METHOD WHEN KAFKA TEST SERVER IS LOCAL
     @Override
     Map<String, Object> consumerProperties() {
         Map<String, Object> props = super.consumerProperties();

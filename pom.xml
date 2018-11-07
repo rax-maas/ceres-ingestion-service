@@ -25,6 +25,7 @@
 		<avro.version>1.8.2</avro.version>
 		<spring-kafka.version>2.1.4.RELEASE</spring-kafka.version>
 		<http-client.version>4.5.5</http-client.version>
+		<spring-boot-configuration-processor.version>2.1.0.RELEASE</spring-boot-configuration-processor.version>
 	</properties>
 
 	<dependencies>
@@ -56,6 +57,7 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-configuration-processor</artifactId>
+			<version>${spring-boot-configuration-processor.version}</version>
 			<optional>true</optional>
 		</dependency>
 

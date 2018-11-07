@@ -16,6 +16,8 @@ rest-template:
 
 kafka:
   servers: ${KAFKA_SERVERS_TEST}
+  listener-container-idle-interval: ${LISTENER_CONTAINER_IDLE_INTERVAL}
+  session-timeout-ms-config: ${SESSION_TIMEOUT_MS_CONFIG}
 
   ssl:
     truststore-location: ${TRUSTSTORE_LOCATION}
@@ -64,6 +66,8 @@ rest-template:
 
 kafka:
   servers: ${KAFKA_SERVERS}
+  listener-container-idle-interval: ${LISTENER_CONTAINER_IDLE_INTERVAL}
+  session-timeout-ms-config: ${SESSION_TIMEOUT_MS_CONFIG}
 
   ssl:
     truststore-location: ${TRUSTSTORE_LOCATION}
