@@ -128,6 +128,8 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
     private Map<String, List<String>> getTenantPayloadsMap(int partitionId, long offset, List<Metric> records){
         Map<String, List<String>> tenantPayloadMap = new HashMap<>();
 
+        int numberOfRecordsNotConvertedIntoInfluxDBPoints = 0;
+
         for(Metric record : records) {
             LOGGER.debug("Received partitionId:{}; Offset:{}; record:{}", partitionId, offset, record);
 
@@ -137,12 +139,23 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
                 throw new IllegalArgumentException(String.format("Invalid tenant Id: [%s]", tenantId));
             }
 
-            Point point = convertToInfluxdbPoint(record);
+            try {
+                Point point = convertToInfluxdbPoint(record);
 
-            if(!tenantPayloadMap.containsKey(tenantId)) tenantPayloadMap.put(tenantId, new ArrayList<>());
+                if (!tenantPayloadMap.containsKey(tenantId)) tenantPayloadMap.put(tenantId, new ArrayList<>());
 
-            List<String> payloads = tenantPayloadMap.get(tenantId);
-            payloads.add(point.lineProtocol(TimeUnit.SECONDS));
+                List<String> payloads = tenantPayloadMap.get(tenantId);
+                payloads.add(point.lineProtocol(TimeUnit.SECONDS));
+            }
+            catch (Exception ex) {
+                numberOfRecordsNotConvertedIntoInfluxDBPoints++;
+                LOGGER.error("Can't convert message into InfluxDB Point. Faulty Message is: [{}]", record);
+            }
+        }
+
+        if(numberOfRecordsNotConvertedIntoInfluxDBPoints > 0) {
+            LOGGER.info("Out of [{}] messages in this batch [{}] couldn't convert into InfluxDB Points.",
+                    records.size(), numberOfRecordsNotConvertedIntoInfluxDBPoints);
         }
 
         return tenantPayloadMap;
