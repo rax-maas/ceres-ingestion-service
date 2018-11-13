@@ -10,23 +10,23 @@ import java.util.Map;
 @Profile("development")
 public class DevelopmentConsumer extends CommonConsumer {
 
-//    @Override
-//    Map<String, Object> consumerProperties() {
-//        return super.consumerProperties();
-//    }
-
-    // TODO: REMOVE FOLLOWING METHOD WHEN KAFKA TEST SERVER IS LOCAL
     @Override
     Map<String, Object> consumerProperties() {
-        Map<String, Object> props = super.consumerProperties();
-
-        props.put("ssl.keystore.location", configurationProperties.getSsl().getKeystoreLocation());
-        props.put("ssl.keystore.password", configurationProperties.getSsl().getKeystorePassword());
-        props.put("ssl.truststore.location", configurationProperties.getSsl().getTruststoreLocation());
-        props.put("ssl.truststore.password", configurationProperties.getSsl().getTruststorePassword());
-        props.put("ssl.key.password", configurationProperties.getSsl().getKeyPassword());
-        props.put("security.protocol", configurationProperties.getProperties().getSecurityProtocol());
-
-        return props;
+        return super.consumerProperties();
     }
+
+//    // TODO: REMOVE FOLLOWING METHOD WHEN KAFKA TEST SERVER IS LOCAL
+//    @Override
+//    Map<String, Object> consumerProperties() {
+//        Map<String, Object> props = super.consumerProperties();
+//
+//        props.put("ssl.keystore.location", configurationProperties.getSsl().getKeystoreLocation());
+//        props.put("ssl.keystore.password", configurationProperties.getSsl().getKeystorePassword());
+//        props.put("ssl.truststore.location", configurationProperties.getSsl().getTruststoreLocation());
+//        props.put("ssl.truststore.password", configurationProperties.getSsl().getTruststorePassword());
+//        props.put("ssl.key.password", configurationProperties.getSsl().getKeyPassword());
+//        props.put("security.protocol", configurationProperties.getProperties().getSecurityProtocol());
+//
+//        return props;
+//    }
 }

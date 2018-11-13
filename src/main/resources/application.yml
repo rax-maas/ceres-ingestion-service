@@ -34,17 +34,17 @@ kafka:
     offset: 0
 
   consumer:
-      group: influxdb-consumer-group
+      group: influxdb-consumer-group-test
 
 tenant-routing-service:
   url: ${TENANT_ROUTING_SERVICE_URL}
 
 logging:
   level:
-    com.rackspacecloud: debug
+    com.rackspacecloud: info
     org.springframework:
       web: info
-      kafka.listener: DEBUG
+      kafka.listener: info
 
 ---
 spring:

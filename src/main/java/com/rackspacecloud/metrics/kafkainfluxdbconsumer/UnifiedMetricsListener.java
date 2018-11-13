@@ -49,18 +49,6 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
         this.influxDBHelper = new InfluxDBHelper(restTemplate, routeProvider);
     }
 
-//    @KafkaListener(topicPartitions = @TopicPartition(topic = "${kafka.topics.in}",
-//            partitionOffsets = {
-//                    @PartitionOffset(
-//                            partition = "${kafka.topics.partition}",
-//                            initialOffset = "${kafka.topics.offset}"
-//                    )}), containerFactory = "batchFactory")
-//    public void listen(List<Metric> messages, @Header(KafkaHeaders.RECEIVED_PARTITION_ID) final int partitionId,
-//                       @Header(KafkaHeaders.OFFSET) final long offset, Acknowledgment ack) {
-//        LOGGER.debug("Received partitionId:; Offset:; record:{}", messages);
-//        batchProcessedCount++;
-//    }
-
     /**
      * This listener listens to unified.metrics.json topic.
      * @param records
