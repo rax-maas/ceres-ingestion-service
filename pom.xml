@@ -91,7 +91,7 @@
 				<version>0.9.11</version>
 				<configuration>
 					<to>
-						<image>749833639264.dkr.ecr.us-east-1.amazonaws.com/metrics-ingestion-service</image>
+						<image>gcr.io/ceres-dev-222017/metrics-ingestion-service</image>
 					</to>
 				</configuration>
 			</plugin>
