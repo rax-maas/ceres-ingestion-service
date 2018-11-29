@@ -4,11 +4,11 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.rackspacecloud.metrics</groupId>
-	<artifactId>kafka-influxdb-consumer</artifactId>
+	<artifactId>ingestion-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
-	<name>kafka-influxdb-consumer</name>
+	<name>ingestion-service</name>
 	<description>Kafka consumer for metrics data to influxdb</description>
 
 	<parent>
@@ -26,6 +26,9 @@
 		<spring-kafka.version>2.1.4.RELEASE</spring-kafka.version>
 		<http-client.version>4.5.5</http-client.version>
 		<spring-boot-configuration-processor.version>2.1.0.RELEASE</spring-boot-configuration-processor.version>
+
+        <!-- Pass on right value to publish the docker image to the registry -->
+        <docker.image.prefix>gcr.io/PROJECT_ID</docker.image.prefix>
 	</properties>
 
 	<dependencies>
@@ -85,17 +88,6 @@
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
 
-			<plugin>
-				<groupId>com.google.cloud.tools</groupId>
-				<artifactId>jib-maven-plugin</artifactId>
-				<version>0.9.11</version>
-				<configuration>
-					<to>
-						<image>gcr.io/ceres-dev-222017/metrics-ingestion-service</image>
-					</to>
-				</configuration>
-			</plugin>
-
 			<!-- avro-maven-plugin -->
 			<plugin>
 				<groupId>org.apache.avro</groupId>
@@ -138,5 +130,31 @@
 		</plugins>
 	</build>
 
-
+    <profiles>
+        <profile>
+            <id>docker</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.google.cloud.tools</groupId>
+                        <artifactId>jib-maven-plugin</artifactId>
+                        <version>0.9.11</version>
+                        <configuration>
+                            <to>
+                                <image>${docker.image.prefix}/metrics-ingestion-service</image>
+                            </to>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>build</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
