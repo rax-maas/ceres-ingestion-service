@@ -13,7 +13,7 @@ podTemplate(label: label, containers: [
       ansiColor('xterm') {
         stage('build') {
           withCredentials([file(credentialsId: 'ceres-jenkins-gcr', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
-            sh 'mvn -P docker -Ddocker.image.prefix=gcr.io/ceres-dev-222017 package'
+            sh 'mvn -DskipTests -P docker -Ddocker.image.prefix=gcr.io/ceres-dev-222017 package'
           }
         }
       }
