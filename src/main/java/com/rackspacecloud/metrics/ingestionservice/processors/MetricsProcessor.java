@@ -1,7 +1,7 @@
-package com.rackspacecloud.metrics.kafkainfluxdbconsumer.processors;
+package com.rackspacecloud.metrics.ingestionservice.processors;
 
 import com.rackspace.maas.model.Metric;
-import com.rackspacecloud.metrics.kafkainfluxdbconsumer.influxdb.Point;
+import com.rackspacecloud.metrics.ingestionservice.influxdb.Point;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
@@ -13,8 +13,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import static com.rackspacecloud.metrics.kafkainfluxdbconsumer.utils.InfluxDBUtils.escapeSpecialCharactersForInfluxdb;
-import static com.rackspacecloud.metrics.kafkainfluxdbconsumer.utils.InfluxDBUtils.replaceSpecialCharacters;
+import static com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBUtils.escapeSpecialCharactersForInfluxdb;
+import static com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBUtils.replaceSpecialCharacters;
 
 public class MetricsProcessor {
     private static final Logger LOGGER = LoggerFactory.getLogger(MetricsProcessor.class);

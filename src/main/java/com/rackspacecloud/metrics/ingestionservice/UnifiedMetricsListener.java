@@ -1,9 +1,9 @@
-package com.rackspacecloud.metrics.kafkainfluxdbconsumer;
+package com.rackspacecloud.metrics.ingestionservice;
 
 import com.rackspace.maas.model.Metric;
-import com.rackspacecloud.metrics.kafkainfluxdbconsumer.influxdb.InfluxDBHelper;
-import com.rackspacecloud.metrics.kafkainfluxdbconsumer.processors.MetricsProcessor;
-import com.rackspacecloud.metrics.kafkainfluxdbconsumer.providers.IRouteProvider;
+import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
+import com.rackspacecloud.metrics.ingestionservice.processors.MetricsProcessor;
+import com.rackspacecloud.metrics.ingestionservice.providers.IRouteProvider;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,7 +22,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
-import static com.rackspacecloud.metrics.kafkainfluxdbconsumer.utils.InfluxDBUtils.replaceSpecialCharacters;
+import static com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBUtils.replaceSpecialCharacters;
 
 @Component
 public class UnifiedMetricsListener implements ConsumerSeekAware {
@@ -32,8 +32,6 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
 
     // At the end of every 1000 messages, log this information
     private static final int MESSAGE_PROCESS_REPORT_COUNT = 1000;
-
-
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UnifiedMetricsListener.class);
 
@@ -61,9 +59,9 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
         Map<String, List<String>> tenantPayloadsMap =
                 MetricsProcessor.getTenantPayloadsMap(partitionId, offset, records);
 
-        boolean isInfluxdbIngestionSuccessful = writeToIntoInfluxdb(tenantPayloadsMap);
+        boolean isInfluxDbIngestionSuccessful = writeIntoInfluxDb(tenantPayloadsMap);
 
-        if (isInfluxdbIngestionSuccessful) {
+        if (isInfluxDbIngestionSuccessful) {
             ack.acknowledge();
             LOGGER.debug("Successfully processed partionId:{}, offset:{} at {}",
                     partitionId, offset, Instant.now());
@@ -72,7 +70,7 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
                 LOGGER.info("Processed {} batches.", batchProcessedCount);
             }
         } else {
-            LOGGER.error("FAILED at {}: partionId:{}, offset:{}, processing a batch of given records [{}]",
+            LOGGER.error("FAILED at {}: partitionId:{}, offset:{}, processing a batch of given records [{}]",
                     Instant.now(), partitionId, offset, records);
             // TODO: retry? OR write messages into some 'maas_metrics_error' topic, so that later on
             // we can read it from that error topic
@@ -87,32 +85,32 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
             LOGGER.info("Processed {} batches so far after start or reset...", getBatchProcessedCount());
         }
 
-        return isInfluxdbIngestionSuccessful;
+        return isInfluxDbIngestionSuccessful;
     }
 
-    private boolean writeToIntoInfluxdb(Map<String, List<String>> tenantPayloadsMap) {
+    private boolean writeIntoInfluxDb(Map<String, List<String>> tenantPayloadsMap) {
         // TODO: Check for it we may need to add retentionPolicy information to store in Redis database
         String retentionPolicyName = "rp_5d";
         String retentionPolicy = "5d";
 
-        boolean isInfluxdbIngestionSuccessful = true;
+        boolean isInfluxDbIngestionSuccessful = true;
 
         for(Map.Entry<String, List<String>> entry : tenantPayloadsMap.entrySet()) {
             String tenantId = entry.getKey();
             String payload = String.join("\n", entry.getValue());
             try {
                 // cleanup tenantId by replacing any special character with "_" before passing it to the function
-                isInfluxdbIngestionSuccessful = influxDBHelper.ingestToInfluxdb(
+                isInfluxDbIngestionSuccessful = influxDBHelper.ingestToInfluxdb(
                         payload, replaceSpecialCharacters(tenantId), retentionPolicy, retentionPolicyName);
 
             } catch (Exception e) {
-                isInfluxdbIngestionSuccessful = false;
+                isInfluxDbIngestionSuccessful = false;
                 LOGGER.error("Ingest failed for payload [{}] with exception message [{}]", payload, e.getMessage());
             }
 
-            if(!isInfluxdbIngestionSuccessful) break;
+            if(!isInfluxDbIngestionSuccessful) break;
         }
-        return isInfluxdbIngestionSuccessful;
+        return isInfluxDbIngestionSuccessful;
     }
 
     /**

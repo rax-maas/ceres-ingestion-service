@@ -1,4 +1,4 @@
-package com.rackspacecloud.metrics.kafkainfluxdbconsumer.utils;
+package com.rackspacecloud.metrics.ingestionservice.utils;
 
 public class InfluxDBUtils {
     public static String escapeSpecialCharactersForInfluxdb(String inputString){

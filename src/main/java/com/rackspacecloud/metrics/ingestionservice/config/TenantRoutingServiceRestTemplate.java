@@ -1,4 +1,4 @@
-package com.rackspacecloud.metrics.kafkainfluxdbconsumer.config;
+package com.rackspacecloud.metrics.ingestionservice.config;
 
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.RequestConfig;

@@ -1,6 +1,6 @@
-package com.rackspacecloud.metrics.kafkainfluxdbconsumer.config;
+package com.rackspacecloud.metrics.ingestionservice.config;
 
-import com.rackspacecloud.metrics.kafkainfluxdbconsumer.serializer.AvroDeserializer;
+import com.rackspacecloud.metrics.ingestionservice.serializer.AvroDeserializer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 

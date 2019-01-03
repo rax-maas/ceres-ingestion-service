@@ -1,7 +1,7 @@
-package com.rackspacecloud.metrics.kafkainfluxdbconsumer.influxdb;
+package com.rackspacecloud.metrics.ingestionservice.influxdb;
 
-import com.rackspacecloud.metrics.kafkainfluxdbconsumer.models.TenantRoute;
-import com.rackspacecloud.metrics.kafkainfluxdbconsumer.providers.IRouteProvider;
+import com.rackspacecloud.metrics.ingestionservice.models.TenantRoute;
+import com.rackspacecloud.metrics.ingestionservice.providers.IRouteProvider;
 import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

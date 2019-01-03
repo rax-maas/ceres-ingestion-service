@@ -1,4 +1,4 @@
-package com.rackspacecloud.metrics.kafkainfluxdbconsumer.influxdb;
+package com.rackspacecloud.metrics.ingestionservice.influxdb;
 
 public final class Preconditions {
     private Preconditions() {

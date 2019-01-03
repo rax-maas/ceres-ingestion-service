@@ -1,7 +1,7 @@
-package com.rackspacecloud.metrics.kafkainfluxdbconsumer.config;
+package com.rackspacecloud.metrics.ingestionservice.config;
 
-import com.rackspacecloud.metrics.kafkainfluxdbconsumer.models.TenantRoute;
-import com.rackspacecloud.metrics.kafkainfluxdbconsumer.providers.IRouteProvider;
+import com.rackspacecloud.metrics.ingestionservice.models.TenantRoute;
+import com.rackspacecloud.metrics.ingestionservice.providers.IRouteProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;

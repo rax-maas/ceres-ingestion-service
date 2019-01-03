@@ -1,4 +1,4 @@
-package com.rackspacecloud.metrics.kafkainfluxdbconsumer.influxdb;
+package com.rackspacecloud.metrics.ingestionservice.influxdb;
 
 import java.math.BigDecimal;
 import java.text.NumberFormat;

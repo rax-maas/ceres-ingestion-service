@@ -1,4 +1,4 @@
-package com.rackspacecloud.metrics.kafkainfluxdbconsumer;
+package com.rackspacecloud.metrics.ingestionservice;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;

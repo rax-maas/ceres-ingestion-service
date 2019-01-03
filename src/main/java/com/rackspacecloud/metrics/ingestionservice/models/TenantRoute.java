@@ -1,4 +1,4 @@
-package com.rackspacecloud.metrics.kafkainfluxdbconsumer.models;
+package com.rackspacecloud.metrics.ingestionservice.models;
 
 import lombok.Data;
 

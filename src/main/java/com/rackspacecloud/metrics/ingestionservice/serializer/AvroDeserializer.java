@@ -1,4 +1,4 @@
-package com.rackspacecloud.metrics.kafkainfluxdbconsumer.serializer;
+package com.rackspacecloud.metrics.ingestionservice.serializer;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;

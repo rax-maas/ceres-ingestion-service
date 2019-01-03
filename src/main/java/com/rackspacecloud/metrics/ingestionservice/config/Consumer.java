@@ -1,7 +1,7 @@
-package com.rackspacecloud.metrics.kafkainfluxdbconsumer.config;
+package com.rackspacecloud.metrics.ingestionservice.config;
 
 import com.rackspace.maas.model.Metric;
-import com.rackspacecloud.metrics.kafkainfluxdbconsumer.serializer.AvroDeserializer;
+import com.rackspacecloud.metrics.ingestionservice.serializer.AvroDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
