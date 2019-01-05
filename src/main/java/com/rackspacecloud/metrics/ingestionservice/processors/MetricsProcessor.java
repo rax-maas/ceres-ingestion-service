@@ -36,7 +36,7 @@ public class MetricsProcessor {
             LOGGER.debug("Received partitionId:{}; Offset:{}; record:{}", partitionId, offset, record);
 
             String tenantId = record.getSystemMetadata().get(TENANT_ID);
-            if (!isValid(TENANT_ID, tenantId, record)) {
+            if (!isValid(TENANT_ID, tenantId)) {
                 LOGGER.error("Invalid tenant ID [{}] in the received record [{}]", tenantId, record);
                 throw new IllegalArgumentException(String.format("Invalid tenant Id: [%s]", tenantId));
             }
@@ -70,7 +70,7 @@ public class MetricsProcessor {
      */
     static Point convertToInfluxdbPoint(Metric record){
 
-        if(!isValid(TIMESTAMP, record.getTimestamp(), record)) return null;
+        if(!isValid(TIMESTAMP, record.getTimestamp())) return null;
 
         if(record.getSystemMetadata().get(CHECK_TYPE) == null) return null;
 
@@ -153,7 +153,7 @@ public class MetricsProcessor {
         }
     }
 
-    static boolean isValid(String fieldName, CharSequence fieldValue, Metric record){
+    static boolean isValid(String fieldName, CharSequence fieldValue){
         if(StringUtils.isEmpty(fieldValue)){
 //            LOGGER.error("There is no value for the field '{}' in record [{}]", fieldName, record);
             return false;

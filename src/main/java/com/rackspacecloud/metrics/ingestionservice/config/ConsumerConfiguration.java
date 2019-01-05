@@ -16,12 +16,12 @@ import org.springframework.kafka.listener.config.ContainerProperties;
 
 @Configuration
 @EnableKafka
-public class Consumer {
+public class ConsumerConfiguration {
 
     ConsumerConfigurationProperties properties;
 
     @Autowired
-    public Consumer(ConsumerConfigurationProperties properties){
+    public ConsumerConfiguration(ConsumerConfigurationProperties properties){
         this.properties = properties;
     }
 
@@ -34,6 +34,17 @@ public class Consumer {
     ConsumerProperties devConsumerProperties() {
         ConsumerProperties consumerProperties = new ConsumerProperties(properties);
 //        consumerProperties.addSslConfig();
+        return consumerProperties;
+    }
+
+    /**
+     * Create ConsumerProperties bean for unit test
+     * @return
+     */
+    @Bean
+    @Profile("test")
+    ConsumerProperties testConsumerProperties() {
+        ConsumerProperties consumerProperties = new ConsumerProperties(properties);
         return consumerProperties;
     }
 

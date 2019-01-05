@@ -3,6 +3,32 @@ server:
 
 ---
 spring:
+  profiles: test
+
+rest-template:
+  request-config:
+    connection-request-timeout: 120000  # timeout when requesting a connection from the connection manager
+    connect-timeout: 120000             # timeout until a connection is established
+    socket-timeout: 120000              # timeout for waiting for data
+
+  pooling-http-client-connection-manager:
+    max-total: 5 # Max number of connection to pool
+
+kafka:
+  servers: ${spring.embedded.kafka.brokers}
+  listener-container-idle-interval: 10000
+  session-timeout-ms-config: 15000
+
+  topics:
+    in: unified.metrics.json
+    partition: 0
+    offset: 0
+
+  consumer:
+      group: influxdb-consumer-group-test
+
+---
+spring:
   profiles: development
 
 rest-template:

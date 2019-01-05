@@ -1,22 +1,25 @@
 package com.rackspacecloud.metrics.ingestionservice.influxdb;
 
-import com.rackspacecloud.metrics.ingestionservice.models.TenantRoute;
-import com.rackspacecloud.metrics.ingestionservice.providers.IRouteProvider;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rackspacecloud.metrics.ingestionservice.models.TenantRoutes;
+import com.rackspacecloud.metrics.ingestionservice.providers.RouteProvider;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
-import org.springframework.util.StringUtils;
+import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
 import java.util.*;
 
+@Component
 public class InfluxDBHelper {
-    private Map<String, Set<String>> urlDatabasesMap;
-    private Map<String, InfluxdbInfo> influxDbInfoMap;
+    private Map<String, Map<String, InfluxDbInfoForRollupLevel>> influxDbInfoMap;
     private RestTemplate restTemplate;
-    private IRouteProvider routeProvider;
+    private RouteProvider routeProvider;
 
 
     private static final String INFLUXDB_INGEST_URL_FORMAT = "%s/write?db=%s&rp=%s&precision=s";
@@ -25,61 +28,187 @@ public class InfluxDBHelper {
     private static final Logger LOGGER = LoggerFactory.getLogger(InfluxDBHelper.class);
 
     @Autowired
-    public InfluxDBHelper(RestTemplate restTemplate, IRouteProvider routeProvider){
+    public InfluxDBHelper(RestTemplate restTemplate, RouteProvider routeProvider){
         this.restTemplate = restTemplate;
         this.routeProvider = routeProvider;
-        this.urlDatabasesMap = new HashMap<>();
         this.influxDbInfoMap = new HashMap<>();
     }
 
     @Data
-    class InfluxdbInfo {
-        private String baseUrlInTheCluster;
+    @AllArgsConstructor
+    class InfluxDbInfoForRollupLevel {
+        private String path;
         private String databaseName;
-
-        public InfluxdbInfo(String baseUrlInTheCluster, String databaseName){
-            this.baseUrlInTheCluster = baseUrlInTheCluster;
-            this.databaseName = databaseName;
-        }
+        private String retentionPolicyName;
+        private String retentionPolicy;
     }
 
-    private InfluxdbInfo getInfluxdbInfo(final String tenantId) {
+    private Map<String, InfluxDbInfoForRollupLevel> getInfluxDbInfo(final String tenantId) {
         if(influxDbInfoMap.containsKey(tenantId)) return influxDbInfoMap.get(tenantId);
 
-        TenantRoute tenantRoute = routeProvider.getRoute(tenantId, restTemplate);
+        TenantRoutes tenantRoutes = routeProvider.getRoute(tenantId, restTemplate);
 
-        if(StringUtils.isEmpty(tenantRoute.getPath())){
-            LOGGER.error("TenantRoute's path '{}' is empty", tenantRoute.getPath());
-            return null;
+        Map<String, InfluxDbInfoForRollupLevel> influxDbInfoForTenant = new HashMap<>();
+
+        for(Map.Entry<String, TenantRoutes.TenantRoute> entry : tenantRoutes.getRoutes().entrySet()) {
+            String rollupLevel = entry.getKey();
+            TenantRoutes.TenantRoute route = entry.getValue();
+            String databaseName = route.getDatabaseName();
+            String path = route.getPath();
+            String retPolicyName = route.getRetentionPolicyName();
+            String retPolicy = route.getRetentionPolicy();
+
+            if(databaseExists(databaseName, path)) {
+                // Check if retention policy exist
+                if(retentionPolicyExists(retPolicyName, databaseName, path)) {
+                    LOGGER.info("Database {} and retention policy {} already exist", databaseName, retPolicyName);
+                    influxDbInfoForTenant.put(rollupLevel, new InfluxDbInfoForRollupLevel(
+                            path, databaseName, retPolicyName, retPolicy
+                    ));
+                }
+                else { // Create retention policy
+                    boolean isDefault = false;
+                    if(rollupLevel.equalsIgnoreCase("full")) isDefault = true;
+
+                    if(createRetentionPolicy(databaseName, path, retPolicy, retPolicyName, isDefault)) {
+                        influxDbInfoForTenant.put(rollupLevel, new InfluxDbInfoForRollupLevel(
+                                path, databaseName, retPolicyName, retPolicy
+                        ));
+                    }
+                    else {
+                        LOGGER.error("Failed to create retention policy {} on database {}",
+                                retPolicyName, databaseName);
+                    }
+                }
+            }
+            else {
+                // InfluxDB create database API always returns 200 (http status code) for new or existing database
+                // TODO: store already processed database so that we don't call createDatabase blindly
+                if(createDatabase(databaseName, path, retPolicy, retPolicyName)) {
+                    influxDbInfoForTenant.put(rollupLevel, new InfluxDbInfoForRollupLevel(
+                            path, databaseName, retPolicyName, retPolicy
+                    ));
+                }
+            }
         }
 
-        if(StringUtils.isEmpty(tenantRoute.getDatabaseName())){
-            LOGGER.error("TenantRoute's database name '{}' is empty", tenantRoute.getDatabaseName());
-            return null;
-        }
+        influxDbInfoMap.put(tenantId, influxDbInfoForTenant);
 
-        InfluxdbInfo influxDbInfo = new InfluxdbInfo(tenantRoute.getPath(), tenantRoute.getDatabaseName());
-        influxDbInfoMap.put(tenantId, influxDbInfo);
-        return influxDbInfo;
+        return influxDbInfoForTenant;
     }
 
-    private boolean createDatabase(
-            final String databaseName,
-            final String baseUrl,
-            final String retPolicy,
-            final String retPolicyName) {
+    private boolean databaseExists(final String databaseName, final String baseUrl) {
+        String queryString = "q=SHOW DATABASES";
+        ResponseEntity<String> response = getResponseEntity(baseUrl, queryString);
 
-        String dbCreatePayload = String.format("q=CREATE DATABASE \"%s\" WITH DURATION %s NAME \"%s\"",
-                databaseName, retPolicy, retPolicyName);
+        try {
+            if (response == null || response.getStatusCode() != HttpStatus.OK) {
+                LOGGER.error("Response is null or Http Status code is not 'OK'");
+                return false;
+            }
+            ObjectMapper mapper = new ObjectMapper();
+            ShowDatabaseResult result = mapper.readValue(response.getBody(), ShowDatabaseResult.class);
+
+            if(result != null
+                    && result.results.length > 0
+                    && result.results[0].series.length > 0
+                    && result.results[0].series[0].values.length > 0
+                    )
+            {
+                List<String> databases = new ArrayList<>();
+                for(String[] strArray : result.results[0].series[0].getValues()) {
+                    for(String database : strArray){
+                        databases.add(database);
+                    }
+                }
+                if(databases.contains(databaseName)) return true;
+            }
+        } catch (IOException e) {
+            LOGGER.error("databaseExists failed with stack trace: {}", e);
+        }
+
+        return false;
+    }
+
+    private ResponseEntity<String> getResponseEntity(String baseUrl, String queryString) {
+        ResponseEntity<String> response = null;
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-        HttpEntity<String> entity = new HttpEntity<>(dbCreatePayload, headers);
+
+        HttpEntity<String> entity = new HttpEntity<>(queryString, headers);
 
         String url = String.format("%s/query", baseUrl);
         try {
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+            response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+        }
+        catch(Exception ex){
+            LOGGER.error("restTemplate.exchange threw exception with message: {}", ex.getMessage());
+        }
+        return response;
+    }
 
+    private boolean retentionPolicyExists(final String rp, final String databaseName, final String baseUrl) {
+        String queryString = String.format("q=SHOW RETENTION POLICIES ON \"%s\"", databaseName);
+        ResponseEntity<String> response = getResponseEntity(baseUrl, queryString);
+
+        try {
+            if (response == null || response.getStatusCode() != HttpStatus.OK) {
+                LOGGER.error("Response is null or Http Status code is not 'OK'");
+                return false;
+            }
+
+            ObjectMapper mapper = new ObjectMapper();
+            ShowRetentionPoliciesResult result =
+                    mapper.readValue(response.getBody(), ShowRetentionPoliciesResult.class);
+
+            if(result != null
+                    && result.results.length > 0
+                    && result.results[0].series.length > 0
+                    && result.results[0].series[0].values.length > 0
+                    )
+            {
+                List<String> retPolicies = new ArrayList<>();
+                for(String[] strings : result.results[0].series[0].values) {
+                    retPolicies.add(strings[0]);
+                }
+
+                if(retPolicies.contains(rp)) return true;
+            }
+        }
+        catch(IOException ex){
+            LOGGER.error("Exception Message: {}; Failed with stack trace: {}", ex.getMessage(), ex);
+        }
+
+        return false;
+    }
+
+    private boolean createDatabase(final String databaseName, final String baseUrl,
+                                   final String retPolicy, final String retPolicyName) {
+        String queryString = String.format("q=CREATE DATABASE \"%s\" WITH DURATION %s NAME \"%s\"",
+                databaseName, retPolicy, retPolicyName);
+        ResponseEntity<String> response = getResponseEntity(baseUrl, queryString);
+
+        if (responseCheck(response)) return true;
+
+        return false;
+    }
+
+    private boolean createRetentionPolicy(final String databaseName, final String baseUrl,
+            final String retPolicy, final String retPolicyName, boolean isDefault) {
+        String queryString = String.format("q=CREATE RETENTION POLICY \"%s\" ON \"%s\" DURATION %s REPLICATION 1",
+                retPolicyName, databaseName, retPolicy);
+
+        if(isDefault) queryString = queryString + " DEFAULT";
+        ResponseEntity<String> response = getResponseEntity(baseUrl, queryString);
+
+        if (responseCheck(response)) return true;
+
+        return false;
+    }
+
+    private boolean responseCheck(ResponseEntity<String> response) {
+        try {
             if (response == null || response.getStatusCode() != HttpStatus.OK) {
                 LOGGER.error("Response is null or Http Status code is not 'OK'");
             }
@@ -89,36 +218,41 @@ public class InfluxDBHelper {
         catch(Exception ex){
             LOGGER.error("restTemplate.exchange threw exception with message: {}", ex.getMessage());
         }
-
         return false;
     }
 
-    public boolean ingestToInfluxdb(String payload, String tenantId, String retPolicy, String retPolicyName) {
-
+    public boolean ingestToInfluxDb(String payload, String tenantId, String rollupLevel) {
         // Get db and URL info to route data to
-        InfluxdbInfo influxdbInfo = getInfluxdbInfo(tenantId);
+        Map<String, InfluxDbInfoForRollupLevel> influxDbInfoForTenant = getInfluxDbInfo(tenantId);
+        InfluxDbInfoForRollupLevel influxDbInfoForRollupLevel = influxDbInfoForTenant.get(rollupLevel);
 
-        if(influxdbInfo == null) return false;
+        if(influxDbInfoForRollupLevel == null) return false;
+
+        String baseUrl = influxDbInfoForRollupLevel.getPath();
+        String databaseName = influxDbInfoForRollupLevel.getDatabaseName();
+        String retPolicyName = influxDbInfoForRollupLevel.getRetentionPolicyName();
 
         HttpHeaders headers = getHttpHeaders();
         HttpEntity<String> request = new HttpEntity<>(payload, headers);
 
-        String url = String.format(INFLUXDB_INGEST_URL_FORMAT,
-                influxdbInfo.baseUrlInTheCluster, influxdbInfo.databaseName, retPolicyName);
+        String url = String.format(INFLUXDB_INGEST_URL_FORMAT, baseUrl, databaseName, retPolicyName);
 
+        if (writeToInfluxDb(payload, request, url)) return true;
+
+        return false;
+    }
+
+    private boolean writeToInfluxDb(String payload, HttpEntity<String> request, String url) {
         ResponseEntity<String> response = null;
         int count = 0;
 
         while(response == null && count < MAX_TRY_FOR_INGEST) {
             try {
-                // InfluxDB create database API always returns 200 (http status code) for new or existing database
-                // TODO: store already processed database so that we don't call createDatabase blindly
-                createDatabase(influxdbInfo.databaseName,
-                        influxdbInfo.baseUrlInTheCluster, retPolicy, retPolicyName);
                 response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
             }
             catch (Exception ex) {
-                LOGGER.error("Using url [{}], Exception message: {}", url, ex.getMessage());
+                LOGGER.error("Using url [{}], Exception message: {}, trace: {}",
+                        url, ex.getMessage(), ex);
             }
 
             if(response != null) {
@@ -130,15 +264,14 @@ public class InfluxDBHelper {
         }
 
         if(response == null){
-            LOGGER.error("Using Influxdb url [{}], got null in response for the payload -> {}", url, payload);
+            LOGGER.error("Using InfluxDB url [{}], got null in response for the payload -> {}", url, payload);
         }
         else if(response.getStatusCode() != HttpStatus.NO_CONTENT){
-            LOGGER.error("Using Influxdb url [{}], couldn't ingest the payload -> {}", url, payload);
+            LOGGER.error("Using InfluxDB url [{}], couldn't ingest the payload -> {}", url, payload);
         }
         else{
             return true;
         }
-
         return false;
     }
 

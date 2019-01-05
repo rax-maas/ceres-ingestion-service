@@ -3,7 +3,6 @@ package com.rackspacecloud.metrics.ingestionservice;
 import com.rackspace.maas.model.Metric;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.processors.MetricsProcessor;
-import com.rackspacecloud.metrics.ingestionservice.providers.IRouteProvider;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +15,6 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
 import java.util.List;
@@ -39,8 +37,8 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
     protected static String tenantRoutingServiceUrl;
 
     @Autowired
-    public UnifiedMetricsListener(RestTemplate restTemplate, IRouteProvider routeProvider){
-        this.influxDBHelper = new InfluxDBHelper(restTemplate, routeProvider);
+    public UnifiedMetricsListener(InfluxDBHelper influxDBHelper) {
+        this.influxDBHelper = influxDBHelper;
     }
 
     /**
@@ -63,7 +61,7 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
 
         if (isInfluxDbIngestionSuccessful) {
             ack.acknowledge();
-            LOGGER.debug("Successfully processed partionId:{}, offset:{} at {}",
+            LOGGER.debug("Successfully processed partitionId:{}, offset:{} at {}",
                     partitionId, offset, Instant.now());
 
             if (batchProcessedCount % MESSAGE_PROCESS_REPORT_COUNT == 0) {
@@ -89,10 +87,6 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
     }
 
     private boolean writeIntoInfluxDb(Map<String, List<String>> tenantPayloadsMap) {
-        // TODO: Check for it we may need to add retentionPolicy information to store in Redis database
-        String retentionPolicyName = "rp_5d";
-        String retentionPolicy = "5d";
-
         boolean isInfluxDbIngestionSuccessful = true;
 
         for(Map.Entry<String, List<String>> entry : tenantPayloadsMap.entrySet()) {
@@ -100,8 +94,9 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
             String payload = String.join("\n", entry.getValue());
             try {
                 // cleanup tenantId by replacing any special character with "_" before passing it to the function
-                isInfluxDbIngestionSuccessful = influxDBHelper.ingestToInfluxdb(
-                        payload, replaceSpecialCharacters(tenantId), retentionPolicy, retentionPolicyName);
+                isInfluxDbIngestionSuccessful = influxDBHelper.ingestToInfluxDb(
+                        payload, replaceSpecialCharacters(tenantId), "full");
+                // TODO: make enum for rollup level
 
             } catch (Exception e) {
                 isInfluxDbIngestionSuccessful = false;
