@@ -1,4 +1,4 @@
-package com.rackspacecloud.metrics.ingestionservice.config;
+package com.rackspacecloud.metrics.ingestionservice.influxdb.config;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;

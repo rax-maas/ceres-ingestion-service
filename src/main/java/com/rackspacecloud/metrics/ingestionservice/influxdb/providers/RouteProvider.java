@@ -1,6 +1,5 @@
-package com.rackspacecloud.metrics.ingestionservice.providers;
+package com.rackspacecloud.metrics.ingestionservice.influxdb.providers;
 
-import com.rackspacecloud.metrics.ingestionservice.models.TenantRoutes;
 import org.springframework.web.client.RestTemplate;
 
 public interface RouteProvider {

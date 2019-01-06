@@ -1,7 +1,5 @@
-package com.rackspacecloud.metrics.ingestionservice.config;
+package com.rackspacecloud.metrics.ingestionservice.influxdb.providers;
 
-import com.rackspacecloud.metrics.ingestionservice.models.TenantRoutes;
-import com.rackspacecloud.metrics.ingestionservice.providers.RouteProvider;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.client.RestTemplate;

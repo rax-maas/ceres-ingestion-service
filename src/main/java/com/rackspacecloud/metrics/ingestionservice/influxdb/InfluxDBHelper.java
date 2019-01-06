@@ -1,8 +1,8 @@
 package com.rackspacecloud.metrics.ingestionservice.influxdb;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.rackspacecloud.metrics.ingestionservice.models.TenantRoutes;
-import com.rackspacecloud.metrics.ingestionservice.providers.RouteProvider;
+import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.TenantRoutes;
+import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.RouteProvider;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.slf4j.Logger;

@@ -1,4 +1,4 @@
-package com.rackspacecloud.metrics.ingestionservice.models;
+package com.rackspacecloud.metrics.ingestionservice.influxdb.providers;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

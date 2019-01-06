@@ -1,8 +1,8 @@
 package com.rackspacecloud.metrics.ingestionservice;
 
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
-import com.rackspacecloud.metrics.ingestionservice.models.TenantRoutes;
-import com.rackspacecloud.metrics.ingestionservice.providers.RouteProvider;
+import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.TenantRoutes;
+import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.RouteProvider;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;

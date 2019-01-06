@@ -1,5 +1,6 @@
-package com.rackspacecloud.metrics.ingestionservice.config;
+package com.rackspacecloud.metrics.ingestionservice.influxdb.config;
 
+import com.rackspacecloud.metrics.ingestionservice.influxdb.config.RestTemplateConfigurationProperties;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.impl.client.CloseableHttpClient;
