@@ -1,12 +1,8 @@
 package com.rackspacecloud.metrics.ingestionservice.influxdb.providers;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 import org.springframework.web.client.RestTemplate;
 
-@Configuration
-@Profile("production")
 public class ProdTenantRouteProvider implements RouteProvider {
     @Value("${tenant-routing-service.url}")
     private String tenantRoutingServiceUrl;

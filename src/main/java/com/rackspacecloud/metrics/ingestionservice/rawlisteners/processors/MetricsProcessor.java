@@ -1,4 +1,4 @@
-package com.rackspacecloud.metrics.ingestionservice.processors;
+package com.rackspacecloud.metrics.ingestionservice.rawlisteners.processors;
 
 import com.rackspace.maas.model.Metric;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.Point;

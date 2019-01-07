@@ -1,8 +1,8 @@
-package com.rackspacecloud.metrics.ingestionservice;
+package com.rackspacecloud.metrics.ingestionservice.rawlisteners;
 
 import com.rackspace.maas.model.Metric;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
-import com.rackspacecloud.metrics.ingestionservice.processors.MetricsProcessor;
+import com.rackspacecloud.metrics.ingestionservice.rawlisteners.processors.MetricsProcessor;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,7 +14,6 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.List;
@@ -22,7 +21,6 @@ import java.util.Map;
 
 import static com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBUtils.replaceSpecialCharacters;
 
-@Component
 public class UnifiedMetricsListener implements ConsumerSeekAware {
     private InfluxDBHelper influxDBHelper;
 

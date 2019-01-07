@@ -1,7 +1,11 @@
-package com.rackspacecloud.metrics.ingestionservice.config;
+package com.rackspacecloud.metrics.ingestionservice.rawlisteners.config;
 
 import com.rackspace.maas.model.Metric;
-import com.rackspacecloud.metrics.ingestionservice.serializer.AvroDeserializer;
+import com.rackspacecloud.metrics.ingestionservice.config.ConsumerConfigurationProperties;
+import com.rackspacecloud.metrics.ingestionservice.config.ConsumerProperties;
+import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
+import com.rackspacecloud.metrics.ingestionservice.rawlisteners.UnifiedMetricsListener;
+import com.rackspacecloud.metrics.ingestionservice.rawlisteners.deserializer.AvroDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -16,12 +20,13 @@ import org.springframework.kafka.listener.config.ContainerProperties;
 
 @Configuration
 @EnableKafka
-public class ConsumerConfiguration {
+@Profile("raw-data-consumer")
+public class RawDataConsumerConfiguration {
 
     ConsumerConfigurationProperties properties;
 
     @Autowired
-    public ConsumerConfiguration(ConsumerConfigurationProperties properties){
+    public RawDataConsumerConfiguration(ConsumerConfigurationProperties properties){
         this.properties = properties;
     }
 
@@ -32,7 +37,7 @@ public class ConsumerConfiguration {
     @Bean
     @Profile("development")
     ConsumerProperties devConsumerProperties() {
-        ConsumerProperties consumerProperties = new ConsumerProperties(properties);
+        ConsumerProperties consumerProperties = new RawDataConsumerProperties(properties);
 //        consumerProperties.addSslConfig();
         return consumerProperties;
     }
@@ -44,7 +49,7 @@ public class ConsumerConfiguration {
     @Bean
     @Profile("test")
     ConsumerProperties testConsumerProperties() {
-        ConsumerProperties consumerProperties = new ConsumerProperties(properties);
+        ConsumerProperties consumerProperties = new RawDataConsumerProperties(properties);
         return consumerProperties;
     }
 
@@ -55,7 +60,7 @@ public class ConsumerConfiguration {
     @Bean
     @Profile("production")
     ConsumerProperties prodConsumerProperties() {
-        ConsumerProperties consumerProperties = new ConsumerProperties(properties);
+        ConsumerProperties consumerProperties = new RawDataConsumerProperties(properties);
         consumerProperties.addSslConfig();
         return consumerProperties;
     }
@@ -67,7 +72,7 @@ public class ConsumerConfiguration {
      */
     @Bean
     @Autowired
-    ConcurrentKafkaListenerContainerFactory<String, Metric> batchFactory(ConsumerProperties config){
+    ConcurrentKafkaListenerContainerFactory<String, Metric> batchFactory(RawDataConsumerProperties config){
         ConcurrentKafkaListenerContainerFactory<String, Metric> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
 
@@ -79,18 +84,21 @@ public class ConsumerConfiguration {
         factory.setConsumerFactory(consumerFactory);
         factory.setBatchListener(true);
 
-        populateContainerProperties(factory, config.configurationProperties);
+        ContainerProperties containerProperties = factory.getContainerProperties();
+        containerProperties.setIdleEventInterval(config.configurationProperties.getListenerContainerIdleInterval());
+        containerProperties.setAckMode(AbstractMessageListenerContainer.AckMode.MANUAL);
 
         return factory;
     }
 
-    private void populateContainerProperties(
-            ConcurrentKafkaListenerContainerFactory<String, Metric> factory,
-            ConsumerConfigurationProperties configurationProperties) {
-
-        ContainerProperties containerProperties = factory.getContainerProperties();
-
-        containerProperties.setIdleEventInterval(configurationProperties.getListenerContainerIdleInterval());
-        containerProperties.setAckMode(AbstractMessageListenerContainer.AckMode.MANUAL);
+    /**
+     * Create UnifiedMetricsListener
+     * @param influxDBHelper
+     * @return
+     */
+    @Bean
+    @Autowired
+    public UnifiedMetricsListener unifiedMetricsListener(InfluxDBHelper influxDBHelper) {
+        return new UnifiedMetricsListener(influxDBHelper);
     }
 }

@@ -1,21 +1,22 @@
 package com.rackspacecloud.metrics.ingestionservice.influxdb;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.TenantRoutes;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.RouteProvider;
+import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.TenantRoutes;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
-import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-@Component
 public class InfluxDBHelper {
     private Map<String, Map<String, InfluxDbInfoForRollupLevel>> influxDbInfoMap;
     private RestTemplate restTemplate;

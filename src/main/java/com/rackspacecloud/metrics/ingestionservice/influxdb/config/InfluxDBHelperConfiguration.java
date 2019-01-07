@@ -1,6 +1,10 @@
 package com.rackspacecloud.metrics.ingestionservice.influxdb.config;
 
+import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.config.RestTemplateConfigurationProperties;
+import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.DevTestTenantRouteProvider;
+import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.ProdTenantRouteProvider;
+import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.RouteProvider;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -10,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
@@ -19,7 +24,7 @@ import java.util.Collections;
 
 @Configuration
 @EnableConfigurationProperties(RestTemplateConfigurationProperties.class)
-public class TenantRoutingServiceRestTemplate {
+public class InfluxDBHelperConfiguration {
     @Autowired
     RestTemplateConfigurationProperties config;
 
@@ -61,5 +66,23 @@ public class TenantRoutingServiceRestTemplate {
         HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory();
         requestFactory.setHttpClient(httpClient);
         return new RestTemplate(requestFactory);
+    }
+
+    @Bean(name = "routeProvider")
+    @Profile({"development", "test"})
+    public RouteProvider devTestTenantRouteProvider() {
+        return new DevTestTenantRouteProvider();
+    }
+
+    @Bean(name = "routeProvider")
+    @Profile("production")
+    public RouteProvider prodTenantRouteProvider() {
+        return new ProdTenantRouteProvider();
+    }
+
+    @Bean
+    @Autowired
+    public InfluxDBHelper influxDBHelper(RestTemplate restTemplate, RouteProvider routeProvider) {
+        return new InfluxDBHelper(restTemplate, routeProvider);
     }
 }

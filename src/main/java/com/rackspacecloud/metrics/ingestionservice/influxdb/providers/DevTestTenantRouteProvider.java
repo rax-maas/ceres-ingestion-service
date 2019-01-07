@@ -1,13 +1,9 @@
 package com.rackspacecloud.metrics.ingestionservice.influxdb.providers;
 
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
 
-@Configuration
-@Profile({"development", "test"})
 public class DevTestTenantRouteProvider implements RouteProvider {
     @Override
     public TenantRoutes getRoute(String tenantId, RestTemplate restTemplate) {

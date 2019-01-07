@@ -1,4 +1,4 @@
-package com.rackspacecloud.metrics.ingestionservice.serializer;
+package com.rackspacecloud.metrics.ingestionservice.rawlisteners.deserializer;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;

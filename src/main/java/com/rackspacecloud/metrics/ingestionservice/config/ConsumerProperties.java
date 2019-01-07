@@ -1,6 +1,5 @@
 package com.rackspacecloud.metrics.ingestionservice.config;
 
-import com.rackspacecloud.metrics.ingestionservice.serializer.AvroDeserializer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 
@@ -8,23 +7,20 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Purpose of this class is to create the consumer configuration.
+ * Purpose of this class is to create common configuration for consumers.
  */
-public class ConsumerProperties {
-    Map<String, Object> properties;
-    ConsumerConfigurationProperties configurationProperties;
+public abstract class ConsumerProperties {
+    public Map<String, Object> properties;
+    public ConsumerConfigurationProperties configurationProperties;
 
-    public ConsumerProperties(ConsumerConfigurationProperties configurationProperties){
+    public ConsumerProperties(ConsumerConfigurationProperties configProps){
         this.properties = new HashMap<>();
-        this.configurationProperties = configurationProperties;
+        this.configurationProperties = configProps;
 
-        properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, configurationProperties.getServers());
-        properties.put(ConsumerConfig.GROUP_ID_CONFIG, configurationProperties.getConsumer().getGroup());
+        properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, configProps.getServers());
         properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-        properties.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG,
-                configurationProperties.getSessionTimeoutMsConfig());
+        properties.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, configProps.getSessionTimeoutMsConfig());
         properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, AvroDeserializer.class);
     }
 
     public void addSslConfig(){

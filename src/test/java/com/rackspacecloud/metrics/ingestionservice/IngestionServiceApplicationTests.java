@@ -3,6 +3,7 @@ package com.rackspacecloud.metrics.ingestionservice;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.producer.MockMetricHelper;
 import com.rackspacecloud.metrics.ingestionservice.producer.Sender;
+import com.rackspacecloud.metrics.ingestionservice.rawlisteners.UnifiedMetricsListener;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
