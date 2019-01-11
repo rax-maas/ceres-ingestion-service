@@ -3,7 +3,7 @@ package com.rackspacecloud.metrics.ingestionservice;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.producer.MockMetricHelper;
 import com.rackspacecloud.metrics.ingestionservice.producer.Sender;
-import com.rackspacecloud.metrics.ingestionservice.rawlisteners.UnifiedMetricsListener;
+import com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.RawListener;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -28,7 +28,7 @@ public class IngestionServiceApplicationTests {
 	static final String UNIFIED_METRICS_TOPIC = "unified.metrics.json";
 
 	@Autowired
-    private UnifiedMetricsListener unifiedMetricsListener;
+    private RawListener rawListener;
 
 	@Autowired
     private Sender sender;
@@ -58,7 +58,7 @@ public class IngestionServiceApplicationTests {
 
         Thread.sleep(10*1000L); // wait for a few sec for consumer to process some records
 
-        long batchProcessed = unifiedMetricsListener.getBatchProcessedCount();
+        long batchProcessed = rawListener.getBatchProcessedCount();
         Assert.assertTrue(batchProcessed > 0);
     }
 }

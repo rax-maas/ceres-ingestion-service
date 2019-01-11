@@ -1,8 +1,8 @@
-package com.rackspacecloud.metrics.ingestionservice.rawlisteners.config;
+package com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.config;
 
 import com.rackspacecloud.metrics.ingestionservice.config.ConsumerConfigurationProperties;
 import com.rackspacecloud.metrics.ingestionservice.config.ConsumerProperties;
-import com.rackspacecloud.metrics.ingestionservice.rawlisteners.deserializer.AvroDeserializer;
+import com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.deserializer.AvroDeserializer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.springframework.context.annotation.Profile;
 

@@ -1,11 +1,11 @@
-package com.rackspacecloud.metrics.ingestionservice.rawlisteners.config;
+package com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.config;
 
 import com.rackspace.maas.model.Metric;
 import com.rackspacecloud.metrics.ingestionservice.config.ConsumerConfigurationProperties;
 import com.rackspacecloud.metrics.ingestionservice.config.ConsumerProperties;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
-import com.rackspacecloud.metrics.ingestionservice.rawlisteners.UnifiedMetricsListener;
-import com.rackspacecloud.metrics.ingestionservice.rawlisteners.deserializer.AvroDeserializer;
+import com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.RawListener;
+import com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.deserializer.AvroDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -72,7 +72,7 @@ public class RawDataConsumerConfiguration {
      */
     @Bean
     @Autowired
-    ConcurrentKafkaListenerContainerFactory<String, Metric> batchFactory(RawDataConsumerProperties config){
+    ConcurrentKafkaListenerContainerFactory<String, Metric> batchFactory(ConsumerProperties config){
         ConcurrentKafkaListenerContainerFactory<String, Metric> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
 
@@ -98,7 +98,7 @@ public class RawDataConsumerConfiguration {
      */
     @Bean
     @Autowired
-    public UnifiedMetricsListener unifiedMetricsListener(InfluxDBHelper influxDBHelper) {
-        return new UnifiedMetricsListener(influxDBHelper);
+    public RawListener unifiedMetricsListener(InfluxDBHelper influxDBHelper) {
+        return new RawListener(influxDBHelper);
     }
 }
