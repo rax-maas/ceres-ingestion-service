@@ -4,6 +4,7 @@ import com.rackspace.maas.model.Metric;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.listeners.UnifiedMetricsListener;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.processors.MetricsProcessor;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,7 +29,8 @@ public class RawListener extends UnifiedMetricsListener {
     protected static String tenantRoutingServiceUrl;
 
     @Autowired
-    public RawListener(InfluxDBHelper influxDBHelper) {
+    public RawListener(InfluxDBHelper influxDBHelper, MeterRegistry registry) {
+        super(registry);
         this.influxDBHelper = influxDBHelper;
     }
 
@@ -42,6 +44,8 @@ public class RawListener extends UnifiedMetricsListener {
             @Header(KafkaHeaders.RECEIVED_PARTITION_ID) final int partitionId,
             @Header(KafkaHeaders.OFFSET) final long offset,
             final Acknowledgment ack) {
+
+        counter.increment();
 
         batchProcessedCount++;
 

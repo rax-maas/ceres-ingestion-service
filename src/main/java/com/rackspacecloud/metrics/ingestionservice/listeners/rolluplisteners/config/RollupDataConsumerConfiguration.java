@@ -5,6 +5,7 @@ import com.rackspacecloud.metrics.ingestionservice.config.ConsumerProperties;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.RollupListener;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.models.MetricRollup;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -81,7 +82,7 @@ public class RollupDataConsumerConfiguration {
 
     @Bean
     @Autowired
-    public RollupListener rollupListener(InfluxDBHelper influxDBHelper){
-        return new RollupListener(influxDBHelper);
+    public RollupListener rollupListener(InfluxDBHelper influxDBHelper, MeterRegistry registry){
+        return new RollupListener(influxDBHelper, registry);
     }
 }

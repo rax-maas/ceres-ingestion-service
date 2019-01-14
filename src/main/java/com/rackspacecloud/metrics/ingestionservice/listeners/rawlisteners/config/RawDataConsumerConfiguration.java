@@ -6,8 +6,10 @@ import com.rackspacecloud.metrics.ingestionservice.config.ConsumerProperties;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.RawListener;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.deserializer.AvroDeserializer;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.actuate.autoconfigure.metrics.MeterRegistryCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -98,7 +100,14 @@ public class RawDataConsumerConfiguration {
      */
     @Bean
     @Autowired
-    public RawListener unifiedMetricsListener(InfluxDBHelper influxDBHelper) {
-        return new RawListener(influxDBHelper);
+    public RawListener unifiedMetricsListener(InfluxDBHelper influxDBHelper, MeterRegistry registry) {
+        return new RawListener(influxDBHelper, registry);
+    }
+
+    @Bean
+    MeterRegistryCustomizer<MeterRegistry> metricsCommonTags() {
+        return registry -> {
+            registry.config().commonTags("consumer.group", properties.getConsumer().getGroup());
+        };
     }
 }
