@@ -41,7 +41,7 @@ public class InfluxDBHelperTests {
 	private InfluxDBHelper influxDBHelper;
 
 	@Test
-    public void ingestToInfluxDb_withExistingDatabaseAndRetPolicy_shouldSucceed() {
+    public void ingestToInfluxDb_withExistingDatabaseAndRetPolicy_shouldSucceed() throws Exception {
         String tenantId = "hybrid:1667601";
         String databaseName = "existing_db";
         String rpName = "existing_rp";
@@ -52,7 +52,7 @@ public class InfluxDBHelperTests {
         successfulIngestionTest(tenantId, databaseName, rpName);
     }
 
-    private void successfulIngestionTest(String tenantId, String databaseName, String rpName) {
+    private void successfulIngestionTest(String tenantId, String databaseName, String rpName) throws Exception {
         String payloadToIngestInInfluxDB = "valid payload";
         String rollupLevel = "full";
         String dbQueryString = "q=SHOW DATABASES";
@@ -96,7 +96,7 @@ public class InfluxDBHelperTests {
     }
 
     @Test
-    public void ingestToInfluxDb_withNonExistingDatabase_shouldCreateDatabase() {
+    public void ingestToInfluxDb_withNonExistingDatabase_shouldCreateDatabase() throws Exception {
         String tenantId = "hybrid:1667601";
         String databaseName = "existing_db";
         String rpName = "existing_rp";
@@ -108,7 +108,8 @@ public class InfluxDBHelperTests {
     }
 
     @Test
-    public void ingestToInfluxDb_withExistingDatabaseNonExistingRetentionPolicy_shouldCreateRetentionPolicy() {
+    public void ingestToInfluxDb_withExistingDatabaseNonExistingRetentionPolicy_shouldCreateRetentionPolicy()
+            throws Exception {
         String tenantId = "hybrid:1667601";
         String databaseName = "existing_db";
         String rpName = "existing_rp";

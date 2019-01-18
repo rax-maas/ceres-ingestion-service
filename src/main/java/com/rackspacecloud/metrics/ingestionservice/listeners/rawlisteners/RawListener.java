@@ -14,6 +14,7 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.web.client.ResourceAccessException;
 
 import java.util.List;
 import java.util.Map;
@@ -38,12 +39,16 @@ public class RawListener extends UnifiedMetricsListener {
      * This listener listens to unified.metrics.json topic.
      * @param records
      */
-    @KafkaListener(topics = "${kafka.topics.in}", containerFactory = "batchFactory")
+    @KafkaListener(
+            topics = "${kafka.topics.in}",
+            containerFactory = "batchFactory",
+            errorHandler = "listenerErrorHandler"
+    )
     public boolean listenUnifiedMetricsTopic(
             @Payload final List<Metric> records,
             @Header(KafkaHeaders.RECEIVED_PARTITION_ID) final int partitionId,
             @Header(KafkaHeaders.OFFSET) final long offset,
-            final Acknowledgment ack) {
+            final Acknowledgment ack) throws Exception {
 
         counter.increment();
 
@@ -58,8 +63,8 @@ public class RawListener extends UnifiedMetricsListener {
                 partitionId, offset, ack, isInfluxDbIngestionSuccessful);
     }
 
-    private boolean writeIntoInfluxDb(Map<String, List<String>> tenantPayloadsMap) {
-        boolean isInfluxDbIngestionSuccessful = true;
+    private boolean writeIntoInfluxDb(Map<String, List<String>> tenantPayloadsMap) throws Exception {
+        boolean isInfluxDbIngestionSuccessful = false;
 
         for(Map.Entry<String, List<String>> entry : tenantPayloadsMap.entrySet()) {
             String tenantId = entry.getKey();
@@ -71,8 +76,16 @@ public class RawListener extends UnifiedMetricsListener {
                 // TODO: make enum for rollup level
 
             } catch (Exception e) {
-                isInfluxDbIngestionSuccessful = false;
-                LOGGER.error("Ingest failed for payload [{}] with exception message [{}]", payload, e.getMessage());
+                String msg = String.format("Write to InfluxDB failed with exception message [%s].", e.getMessage());
+
+                if(e.getCause().getClass().equals(ResourceAccessException.class)){
+                    LOGGER.error(msg, e);
+                }
+                else {
+                    LOGGER.error("[{}] Payload [{}]", msg, payload, e);
+                }
+
+                throw new Exception(msg, e);
             }
 
             if(!isInfluxDbIngestionSuccessful) break;

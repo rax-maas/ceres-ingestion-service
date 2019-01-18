@@ -44,10 +44,10 @@ public class InfluxDBHelper {
         private String retentionPolicy;
     }
 
-    private Map<String, InfluxDbInfoForRollupLevel> getInfluxDbInfo(final String tenantId) {
+    private Map<String, InfluxDbInfoForRollupLevel> getInfluxDbInfo(final String tenantId) throws Exception {
         if(influxDbInfoMap.containsKey(tenantId)) return influxDbInfoMap.get(tenantId);
 
-        TenantRoutes tenantRoutes = routeProvider.getRoute(tenantId, restTemplate);
+        TenantRoutes tenantRoutes = getTenantRoutes(tenantId);
 
         Map<String, InfluxDbInfoForRollupLevel> influxDbInfoForTenant = new HashMap<>();
 
@@ -96,6 +96,22 @@ public class InfluxDBHelper {
         influxDbInfoMap.put(tenantId, influxDbInfoForTenant);
 
         return influxDbInfoForTenant;
+    }
+
+    private TenantRoutes getTenantRoutes(String tenantId) throws Exception {
+        TenantRoutes tenantRoutes;
+
+        try {
+            tenantRoutes = routeProvider.getRoute(tenantId, restTemplate);
+        }
+        catch(Exception e) {
+            String errMsg = String.format("Failed to get routes for tenantId [%s]", tenantId);
+            LOGGER.error(errMsg, e);
+            throw new Exception(errMsg, e);
+        }
+
+        if(tenantRoutes == null) throw new Exception("tenantRoutes is null.");
+        return tenantRoutes;
     }
 
     private boolean databaseExists(final String databaseName, final String baseUrl) {
@@ -222,7 +238,7 @@ public class InfluxDBHelper {
         return false;
     }
 
-    public boolean ingestToInfluxDb(String payload, String tenantId, String rollupLevel) {
+    public boolean ingestToInfluxDb(String payload, String tenantId, String rollupLevel) throws Exception {
         // Get db and URL info to route data to
         Map<String, InfluxDbInfoForRollupLevel> influxDbInfoForTenant = getInfluxDbInfo(tenantId);
         InfluxDbInfoForRollupLevel influxDbInfoForRollupLevel = influxDbInfoForTenant.get(rollupLevel);
