@@ -22,5 +22,6 @@ public class TenantRoutes {
         private String databaseName;
         private String retentionPolicyName;
         private String retentionPolicy;
+        private int maxSeriesCount;
     }
 }

@@ -133,7 +133,8 @@ public class InfluxDBHelperTests {
                 "valid_url",
                 databaseName,
                 rpName,
-                "5d"
+                "5d",
+                10000
         ));
 
         return tenantRoutes;
