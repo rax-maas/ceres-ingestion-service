@@ -24,12 +24,11 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UnifiedMetricsListener.class);
 
-    protected MeterRegistry registry;
+//    protected MeterRegistry registry;
 
     @Autowired
     public UnifiedMetricsListener(MeterRegistry registry) {
-        this.registry = registry;
-        this.counter = this.registry.counter("batch.processed");
+        this.counter = registry.counter("batch.processed");
     }
 
     @Override

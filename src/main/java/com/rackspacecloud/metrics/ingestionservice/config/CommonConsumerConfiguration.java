@@ -1,8 +1,11 @@
 package com.rackspacecloud.metrics.ingestionservice.config;
 
+import io.micrometer.core.aop.TimedAspect;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.listener.ConsumerAwareListenerErrorHandler;
@@ -51,5 +54,11 @@ public class CommonConsumerConfiguration {
 
             return null;
         };
+    }
+
+    @Bean
+    @Autowired
+    public TimedAspect timedAspect(MeterRegistry registry) {
+        return new TimedAspect(registry);
     }
 }

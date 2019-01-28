@@ -14,6 +14,7 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.web.client.ResourceAccessException;
 
 import java.util.List;
 import java.util.Map;
@@ -38,60 +39,80 @@ public class RollupListener extends UnifiedMetricsListener {
      * This listener listens to unified.metrics.json topic.
      * @param records
      */
-    @KafkaListener(topics = "${kafka.topics.source-5m}", containerFactory = "batchFactory")
+    @KafkaListener(
+            topics = "${kafka.topics.source-5m}",
+            containerFactory = "batchFactory",
+            errorHandler = "listenerErrorHandler"
+    )
     public boolean listenMetricsRollup5m(
             @Payload final List<MetricRollup> records,
             @Header(KafkaHeaders.RECEIVED_PARTITION_ID) final int partitionId,
             @Header(KafkaHeaders.OFFSET) final long offset,
-            final Acknowledgment ack) {
+            final Acknowledgment ack) throws Exception {
 
         String rollupLevel = "5m";
 
         return listenMetricsRollup(records, partitionId, offset, ack, rollupLevel);
     }
 
-    @KafkaListener(topics = "${kafka.topics.source-20m}", containerFactory = "batchFactory")
+    @KafkaListener(
+            topics = "${kafka.topics.source-20m}",
+            containerFactory = "batchFactory",
+            errorHandler = "listenerErrorHandler"
+    )
     public boolean listenMetricsRollup20m(
             @Payload final List<MetricRollup> records,
             @Header(KafkaHeaders.RECEIVED_PARTITION_ID) final int partitionId,
             @Header(KafkaHeaders.OFFSET) final long offset,
-            final Acknowledgment ack) {
+            final Acknowledgment ack) throws Exception {
 
         String rollupLevel = "20m";
 
         return listenMetricsRollup(records, partitionId, offset, ack, rollupLevel);
     }
 
-    @KafkaListener(topics = "${kafka.topics.source-60m}", containerFactory = "batchFactory")
+    @KafkaListener(
+            topics = "${kafka.topics.source-60m}",
+            containerFactory = "batchFactory",
+            errorHandler = "listenerErrorHandler"
+    )
     public boolean listenMetricsRollup60m(
             @Payload final List<MetricRollup> records,
             @Header(KafkaHeaders.RECEIVED_PARTITION_ID) final int partitionId,
             @Header(KafkaHeaders.OFFSET) final long offset,
-            final Acknowledgment ack) {
+            final Acknowledgment ack) throws Exception {
 
         String rollupLevel = "60m";
 
         return listenMetricsRollup(records, partitionId, offset, ack, rollupLevel);
     }
 
-    @KafkaListener(topics = "${kafka.topics.source-240m}", containerFactory = "batchFactory")
+    @KafkaListener(
+            topics = "${kafka.topics.source-240m}",
+            containerFactory = "batchFactory",
+            errorHandler = "listenerErrorHandler"
+    )
     public boolean listenMetricsRollup240m(
             @Payload final List<MetricRollup> records,
             @Header(KafkaHeaders.RECEIVED_PARTITION_ID) final int partitionId,
             @Header(KafkaHeaders.OFFSET) final long offset,
-            final Acknowledgment ack) {
+            final Acknowledgment ack) throws Exception {
 
         String rollupLevel = "240m";
 
         return listenMetricsRollup(records, partitionId, offset, ack, rollupLevel);
     }
 
-    @KafkaListener(topics = "${kafka.topics.source-1440m}", containerFactory = "batchFactory")
+    @KafkaListener(
+            topics = "${kafka.topics.source-1440m}",
+            containerFactory = "batchFactory",
+            errorHandler = "listenerErrorHandler"
+    )
     public boolean listenMetricsRollup1440m(
             @Payload final List<MetricRollup> records,
             @Header(KafkaHeaders.RECEIVED_PARTITION_ID) final int partitionId,
             @Header(KafkaHeaders.OFFSET) final long offset,
-            final Acknowledgment ack) {
+            final Acknowledgment ack) throws Exception {
 
         String rollupLevel = "1440m";
 
@@ -103,20 +124,23 @@ public class RollupListener extends UnifiedMetricsListener {
             @Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partitionId,
             @Header(KafkaHeaders.OFFSET) long offset,
             Acknowledgment ack,
-            String rollupLevel) {
+            String rollupLevel) throws Exception {
         batchProcessedCount++;
 
         Map<String, List<String>> tenantPayloadsMap =
                 MetricsRollupProcessor.getTenantRollupPayloadsMap(partitionId, offset, records);
 
-        boolean isInfluxdbIngestionSuccessful = writeIntoInfluxDb(tenantPayloadsMap, rollupLevel);
+        boolean isInfluxdbIngestionSuccessful = writeToInfluxDb(tenantPayloadsMap, rollupLevel);
 
         return processPostInfluxDbIngestion(records.toString(),
                 partitionId, offset, ack, isInfluxdbIngestionSuccessful);
     }
 
-    private boolean writeIntoInfluxDb(final Map<String, List<String>> tenantPayloadsMap, final String rollupLevel) {
-        boolean isInfluxdbIngestionSuccessful = true;
+    private boolean writeToInfluxDb(
+            final Map<String, List<String>> tenantPayloadsMap,
+            final String rollupLevel) throws Exception {
+
+        boolean isInfluxdbIngestionSuccessful = false;
 
         for(Map.Entry<String, List<String>> entry : tenantPayloadsMap.entrySet()) {
             String tenantId = entry.getKey();
@@ -127,8 +151,15 @@ public class RollupListener extends UnifiedMetricsListener {
                         payload, replaceSpecialCharacters(tenantId), rollupLevel);
 
             } catch (Exception e) {
-                isInfluxdbIngestionSuccessful = false;
-                LOGGER.error("Ingest failed for payload [{}] with exception message [{}]", payload, e.getMessage());
+                String msg = String.format("Write to InfluxDB failed with exception message [%s].", e.getMessage());
+                if(e.getCause().getClass().equals(ResourceAccessException.class)){
+                    LOGGER.error(msg, e);
+                }
+                else {
+                    LOGGER.error("[{}] Payload [{}]", msg, payload, e);
+                }
+
+                throw new Exception(msg, e);
             }
 
             if(!isInfluxdbIngestionSuccessful) break;

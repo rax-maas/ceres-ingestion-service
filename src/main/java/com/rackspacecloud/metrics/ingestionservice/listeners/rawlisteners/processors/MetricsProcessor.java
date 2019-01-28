@@ -91,23 +91,19 @@ public class MetricsProcessor {
     static void populateTagsAndFields(Metric record, Point.Builder pointBuilder) {
 
         if(!StringUtils.isEmpty(record.getSystemMetadata().get(ACCOUNT_ID))) {
-            pointBuilder.tag("systemaccountid",
-                    escapeSpecialCharactersForInfluxdb(record.getSystemMetadata().get(ACCOUNT_ID).trim()));
+            pointBuilder.tag("systemaccountid", record.getSystemMetadata().get(ACCOUNT_ID).trim());
         }
 
         if(!StringUtils.isEmpty(record.getCollectionTarget())) {
-            pointBuilder.tag("target",
-                    escapeSpecialCharactersForInfluxdb(record.getCollectionTarget().trim()));
+            pointBuilder.tag("target", record.getCollectionTarget().trim());
         }
 
         if(!StringUtils.isEmpty(record.getMonitoringSystem().toString())) {
-            pointBuilder.tag("monitoringsystem",
-                    escapeSpecialCharactersForInfluxdb(record.getMonitoringSystem().toString().trim()));
+            pointBuilder.tag("monitoringsystem", record.getMonitoringSystem().toString().trim());
         }
 
         if(!StringUtils.isEmpty(record.getCollectionLabel())) {
-            pointBuilder.tag("collectionlabel",
-                    escapeSpecialCharactersForInfluxdb(record.getCollectionLabel().trim()));
+            pointBuilder.tag("collectionlabel", record.getCollectionLabel().trim());
         }
 
         addEntityTags(record, pointBuilder);
@@ -117,20 +113,17 @@ public class MetricsProcessor {
     static void addMonitoringZone(Metric record, Point.Builder pointBuilder) {
         final String monitoringZone = record.getSystemMetadata().get(MONITORING_ZONE);
         if(!StringUtils.isEmpty(monitoringZone)){
-            pointBuilder.tag("monitoringzone",
-                    escapeSpecialCharactersForInfluxdb(monitoringZone.trim()));
+            pointBuilder.tag("monitoringzone", monitoringZone.trim());
         }
     }
 
     static void addEntityTags(Metric record, Point.Builder pointBuilder) {
         final String entityId = record.getSystemMetadata().get(ENTITY_ID);
         if(!StringUtils.isEmpty(entityId)) {
-            pointBuilder.tag("entitysystemid",
-                    escapeSpecialCharactersForInfluxdb(entityId.trim()));
+            pointBuilder.tag("entitysystemid", entityId.trim());
         }
         if(!StringUtils.isEmpty(record.getDeviceLabel())) {
-            pointBuilder.tag("devicelabel",
-                    escapeSpecialCharactersForInfluxdb(record.getDeviceLabel().trim()));
+            pointBuilder.tag("devicelabel", record.getDeviceLabel().trim());
         }
     }
 
@@ -138,16 +131,14 @@ public class MetricsProcessor {
 
         for(Map.Entry<String, Long> entry : record.getIvalues().entrySet()){
             String metricFieldName = replaceSpecialCharacters(entry.getKey());
-            pointBuilder.tag(String.format("%s_unit", metricFieldName),
-                    escapeSpecialCharactersForInfluxdb(record.getUnits().get(entry.getKey())));
+            pointBuilder.tag(String.format("%s_unit", metricFieldName), record.getUnits().get(entry.getKey()));
 
             pointBuilder.addField(metricFieldName, entry.getValue().doubleValue());
         }
 
         for(Map.Entry<String, Double> entry : record.getFvalues().entrySet()){
             String metricFieldName = replaceSpecialCharacters(entry.getKey());
-            pointBuilder.tag(String.format("%s_unit", metricFieldName),
-                    escapeSpecialCharactersForInfluxdb(record.getUnits().get(entry.getKey())));
+            pointBuilder.tag(String.format("%s_unit", metricFieldName), record.getUnits().get(entry.getKey()));
 
             pointBuilder.addField(metricFieldName, entry.getValue());
         }
