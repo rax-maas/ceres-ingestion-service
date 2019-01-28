@@ -16,7 +16,6 @@ public class TenantRoutes {
     }
 
     @Data
-    @AllArgsConstructor
     public static class TenantRoute {
         private String path;
         private String databaseName;
