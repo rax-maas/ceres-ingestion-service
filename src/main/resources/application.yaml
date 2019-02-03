@@ -21,8 +21,11 @@ kafka:
 
   topics:
     in: unified.metrics.json
-    partition: 0
-    offset: 0
+    source-5m: unified.metrics.json.5m
+    source-20m: unified.metrics.json.20m
+    source-60m: unified.metrics.json.60m
+    source-240m: unified.metrics.json.240m
+    source-1440m: unified.metrics.json.1440m
 
   consumer:
       group: influxdb-consumer-group-test
@@ -74,12 +77,15 @@ logging:
     org.springframework:
       web: info
       kafka.listener: info
+
 management:
   endpoints:
     web:
       exposure:
         include: "health,jolokia,metrics"
   metrics:
+    tags:
+      stack: "dev"
     export:
       statsd:
         flavor: ${statsd.flavor:telegraf}
@@ -87,10 +93,9 @@ management:
         port: ${statsd.port:8125}
         enabled: ${statsd.enabled:false}
       influx:
-        db: telemetry-ambassador
-        host: ${statsd.host:localhost}
-        port: ${statsd.port:8086}
-        enabled: ${influx.enabled:false}
+        db: ceres
+        uri: http://localhost:8086
+        auto-create-db: true
 
 ---
 spring:
@@ -144,3 +149,22 @@ logging:
     org.springframework:
       web: info
       kafka.listener: info
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,jolokia,metrics"
+  metrics:
+    tags:
+      stack: "prod"
+    export:
+      statsd:
+        flavor: ${statsd.flavor:telegraf}
+        host: ${statsd.host:localhost}
+        port: ${statsd.port:8125}
+        enabled: ${statsd.enabled:false}
+      influx:
+        db: ceres
+        uri: http://data-influxdb:8086
+        auto-create-db: true

@@ -1,7 +1,6 @@
 package com.rackspacecloud.metrics.ingestionservice.influxdb.config;
 
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
-import com.rackspacecloud.metrics.ingestionservice.influxdb.config.RestTemplateConfigurationProperties;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.DevTestTenantRouteProvider;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.ProdTenantRouteProvider;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.RouteProvider;

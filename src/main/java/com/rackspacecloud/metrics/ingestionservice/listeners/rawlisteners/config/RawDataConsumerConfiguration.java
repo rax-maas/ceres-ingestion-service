@@ -17,8 +17,7 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
-import org.springframework.kafka.listener.AbstractMessageListenerContainer;
-import org.springframework.kafka.listener.config.ContainerProperties;
+import org.springframework.kafka.listener.ContainerProperties;
 
 @Configuration
 @EnableKafka
@@ -88,7 +87,7 @@ public class RawDataConsumerConfiguration {
 
         ContainerProperties containerProperties = factory.getContainerProperties();
         containerProperties.setIdleEventInterval(config.configurationProperties.getListenerContainerIdleInterval());
-        containerProperties.setAckMode(AbstractMessageListenerContainer.AckMode.MANUAL);
+        containerProperties.setAckMode(ContainerProperties.AckMode.MANUAL);
 
         return factory;
     }
@@ -106,8 +105,6 @@ public class RawDataConsumerConfiguration {
 
     @Bean
     MeterRegistryCustomizer<MeterRegistry> metricsCommonTags() {
-        return registry -> {
-            registry.config().commonTags("consumer.group", properties.getConsumer().getGroup());
-        };
+        return registry -> registry.config().commonTags("consumer.group", properties.getConsumer().getGroup());
     }
 }

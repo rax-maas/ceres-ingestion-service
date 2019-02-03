@@ -1,6 +1,7 @@
 package com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.processors;
 
 import com.rackspacecloud.metrics.ingestionservice.influxdb.Point;
+import com.rackspacecloud.metrics.ingestionservice.listeners.processors.Dimension;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.models.MetricRollup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import static com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBUtils.escapeSpecialCharactersForInfluxdb;
 import static com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBUtils.replaceSpecialCharacters;
 
 /**
@@ -21,11 +21,17 @@ import static com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBUtils.re
 public class MetricsRollupProcessor {
     private static final Logger LOGGER = LoggerFactory.getLogger(MetricsRollupProcessor.class);
     private static final String TENANT_ID = "tenantId";
-    private static final String CHECK_TYPE = "checkType";
-    private static final String ACCOUNT_ID = "accountId";
-    private static final String MONITORING_ZONE = "monitoringZone";
-    private static final String ENTITY_ID = "entityId";
 
+    private static Dimension getDimensions(MetricRollup record) {
+        Dimension dimension = new Dimension();
+        dimension.setCollectionLabel(record.getCollectionLabel());
+        dimension.setCollectionTarget(record.getCollectionTarget());
+        dimension.setDeviceLabel(record.getDeviceLabel());
+        dimension.setMonitoringSystem(record.getMonitoringSystem());
+        dimension.setSystemMetadata(record.getSystemMetadata());
+
+        return dimension;
+    }
 
     /**
      * This method creates the payloads to be written into InfluxDB
@@ -38,7 +44,6 @@ public class MetricsRollupProcessor {
             int partitionId, long offset, List<MetricRollup> records) {
 
         Map<String, List<String>> tenantPayloadMap = new HashMap<>();
-
         int numberOfRecordsNotConvertedIntoInfluxDBPoints = 0;
 
         for(MetricRollup record : records) {
@@ -50,9 +55,12 @@ public class MetricsRollupProcessor {
                 throw new IllegalArgumentException(String.format("Invalid tenant Id: [%s]", tenantId));
             }
 
-            // TODO: remove dup code
+            Dimension dimension = getDimensions(record);
+
             try {
-                Point point = convertToInfluxdbPoint(record);
+                Point.Builder pointBuilder = Dimension.populateTagsAndFields(dimension);
+                populatePayload(record, pointBuilder);
+                Point point =  pointBuilder.build();
 
                 if (!tenantPayloadMap.containsKey(tenantId)) tenantPayloadMap.put(tenantId, new ArrayList<>());
 
@@ -73,79 +81,13 @@ public class MetricsRollupProcessor {
         return tenantPayloadMap;
     }
 
-    /**
-     * Convert the received record into Influxdb ingest input format
-     * @param record
-     * @return
-     */
-    private static Point convertToInfluxdbPoint(MetricRollup record){
-
-        if(record.getSystemMetadata().get(CHECK_TYPE) == null) return null;
-
-        String measurement = record.getSystemMetadata().get(CHECK_TYPE);
-
-        Point.Builder pointBuilder = Point.measurement(replaceSpecialCharacters(measurement));
-        populateTagsAndFields(record, pointBuilder);
-
-        populatePayload(record, pointBuilder);
-
-        return pointBuilder.build();
-    }
-
-    private static void populateTagsAndFields(MetricRollup record, Point.Builder pointBuilder) {
-
-        if(!StringUtils.isEmpty(record.getSystemMetadata().get(ACCOUNT_ID))) {
-            pointBuilder.tag("systemaccountid",
-                    escapeSpecialCharactersForInfluxdb(record.getSystemMetadata().get(ACCOUNT_ID).trim()));
-        }
-
-        if(!StringUtils.isEmpty(record.getCollectionTarget())) {
-            pointBuilder.tag("target",
-                    escapeSpecialCharactersForInfluxdb(record.getCollectionTarget().trim()));
-        }
-
-        if(!StringUtils.isEmpty(record.getMonitoringSystem())) {
-            pointBuilder.tag("monitoringsystem",
-                    escapeSpecialCharactersForInfluxdb(record.getMonitoringSystem().trim()));
-        }
-
-        if(!StringUtils.isEmpty(record.getCollectionLabel())) {
-            pointBuilder.tag("collectionlabel",
-                    escapeSpecialCharactersForInfluxdb(record.getCollectionLabel().trim()));
-        }
-
-        addEntityTags(record, pointBuilder);
-        addMonitoringZone(record, pointBuilder);
-    }
-
-    private static void addMonitoringZone(MetricRollup record, Point.Builder pointBuilder) {
-        final String monitoringZone = record.getSystemMetadata().get(MONITORING_ZONE);
-        if(!StringUtils.isEmpty(monitoringZone)){
-            pointBuilder.tag("monitoringzone",
-                    escapeSpecialCharactersForInfluxdb(monitoringZone.trim()));
-        }
-    }
-
-    private static void addEntityTags(MetricRollup record, Point.Builder pointBuilder) {
-        final String entityId = record.getSystemMetadata().get(ENTITY_ID);
-        if(!StringUtils.isEmpty(entityId)) {
-            pointBuilder.tag("entitysystemid",
-                    escapeSpecialCharactersForInfluxdb(entityId.trim()));
-        }
-        if(!StringUtils.isEmpty(record.getDeviceLabel())) {
-            pointBuilder.tag("devicelabel",
-                    escapeSpecialCharactersForInfluxdb(record.getDeviceLabel().trim()));
-        }
-    }
-
     private static void populatePayload(final MetricRollup record, final Point.Builder pointBuilder) {
         pointBuilder.addField("start", record.getStart());
         pointBuilder.addField("end", record.getEnd());
 
         for(Map.Entry<String, MetricRollup.RollupBucket<Long>> entry : record.getIvalues().entrySet()){
             String metricFieldName = replaceSpecialCharacters(entry.getKey());
-            pointBuilder.tag(String.format("%s_unit", metricFieldName),
-                    escapeSpecialCharactersForInfluxdb(record.getUnits().get(entry.getKey())));
+            pointBuilder.tag(String.format("%s_unit", metricFieldName), record.getUnits().get(entry.getKey()));
 
             MetricRollup.RollupBucket<Long> rollupBucketLong = entry.getValue();
             pointBuilder.addField(
@@ -163,8 +105,7 @@ public class MetricsRollupProcessor {
 
         for(Map.Entry<String, MetricRollup.RollupBucket<Double>> entry : record.getFvalues().entrySet()){
             String metricFieldName = replaceSpecialCharacters(entry.getKey());
-            pointBuilder.tag(String.format("%s_unit", metricFieldName),
-                    escapeSpecialCharactersForInfluxdb(record.getUnits().get(entry.getKey())));
+            pointBuilder.tag(String.format("%s_unit", metricFieldName), record.getUnits().get(entry.getKey()));
 
             MetricRollup.RollupBucket<Double> rollupBucketDouble = entry.getValue();
 

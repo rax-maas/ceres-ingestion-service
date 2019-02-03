@@ -3,7 +3,7 @@ package com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners;
 import com.rackspace.maas.model.Metric;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.listeners.UnifiedMetricsListener;
-import com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.processors.MetricsProcessor;
+import com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.processors.RawMetricsProcessor;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,12 +50,10 @@ public class RawListener extends UnifiedMetricsListener {
             @Header(KafkaHeaders.OFFSET) final long offset,
             final Acknowledgment ack) throws Exception {
 
-        counter.increment();
-
         batchProcessedCount++;
 
         Map<String, List<String>> tenantPayloadsMap =
-                MetricsProcessor.getTenantPayloadsMap(partitionId, offset, records);
+                RawMetricsProcessor.getTenantPayloadsMap(partitionId, offset, records);
 
         boolean isInfluxDbIngestionSuccessful = writeIntoInfluxDb(tenantPayloadsMap);
 

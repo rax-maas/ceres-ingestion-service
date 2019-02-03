@@ -125,6 +125,7 @@ public class RollupListener extends UnifiedMetricsListener {
             @Header(KafkaHeaders.OFFSET) long offset,
             Acknowledgment ack,
             String rollupLevel) throws Exception {
+
         batchProcessedCount++;
 
         Map<String, List<String>> tenantPayloadsMap =
