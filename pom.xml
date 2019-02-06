@@ -103,6 +103,11 @@
             <artifactId>aspectjrt</artifactId>
             <version>1.9.2</version>
         </dependency>
+		<!--<dependency>-->
+			<!--<groupId>com.google.cloud</groupId>-->
+			<!--<artifactId>google-cloud-logging-logback</artifactId>-->
+			<!--<version>0.77.0-alpha</version>-->
+		<!--</dependency>-->
     </dependencies>
 
 	<build>
