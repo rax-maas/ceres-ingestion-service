@@ -87,11 +87,6 @@ management:
     tags:
       stack: "dev"
     export:
-      statsd:
-        flavor: ${statsd.flavor:telegraf}
-        host: ${statsd.host:localhost}
-        port: ${statsd.port:8125}
-        enabled: ${statsd.enabled:false}
       influx:
         db: ceres
         uri: http://localhost:8086
@@ -168,3 +163,5 @@ management:
         db: ceres
         uri: http://data-influxdb:8086
         auto-create-db: true
+      stackdriver:
+        project-id: ceres-dev-222017
