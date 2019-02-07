@@ -2,6 +2,7 @@ package com.rackspacecloud.metrics.ingestionservice.config;
 
 import io.micrometer.core.aop.TimedAspect;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.config.MeterFilter;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +55,13 @@ public class CommonConsumerConfiguration {
 
             return null;
         };
+    }
+
+    @Bean
+    public MeterFilter metricsFilter() {
+        String denyString = "jvm";
+        LOGGER.info("Filtering out string [{}]", denyString);
+        return MeterFilter.denyNameStartsWith(denyString);
     }
 
     @Bean
