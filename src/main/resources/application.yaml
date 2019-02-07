@@ -165,3 +165,4 @@ management:
         auto-create-db: true
       stackdriver:
         project-id: ceres-dev-222017
+        enabled: true
