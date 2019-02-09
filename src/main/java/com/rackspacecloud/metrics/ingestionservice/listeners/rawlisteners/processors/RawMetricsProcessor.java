@@ -18,6 +18,7 @@ import static com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBUtils.re
 
 public class RawMetricsProcessor {
     private static final String TIMESTAMP = "timestamp";
+    private static final String UNAVAILABLE = "unavailable";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RawMetricsProcessor.class);
     private static final String TENANT_ID = "tenantId";
@@ -34,7 +35,7 @@ public class RawMetricsProcessor {
     }
 
     public static final Map<String, List<String>> getTenantPayloadsMap(
-            int partitionId, long offset, List<Metric> records) {
+            int partitionId, long offset, List<Metric> records) throws Exception {
 
         Map<String, List<String>> tenantPayloadMap = new HashMap<>();
         int numberOfRecordsNotConvertedIntoInfluxDBPoints = 0;
@@ -42,7 +43,8 @@ public class RawMetricsProcessor {
         for(Metric record : records) {
             LOGGER.debug("Received partitionId:{}; Offset:{}; record:{}", partitionId, offset, record);
 
-            if(!isValid(TIMESTAMP, record.getTimestamp())) return null;
+            if(!isValid(TIMESTAMP, record.getTimestamp()))
+                throw new Exception("Invalid timestamp [" + record.getTimestamp() + "]");
 
             Dimension dimension = getDimensions(record);
 
@@ -81,25 +83,28 @@ public class RawMetricsProcessor {
     }
 
     static void populatePayload(final Metric record, final Point.Builder pointBuilder) {
-
         for(Map.Entry<String, Long> entry : record.getIvalues().entrySet()){
-            String metricFieldName = replaceSpecialCharacters(entry.getKey());
-            pointBuilder.tag(String.format("%s_unit", metricFieldName), record.getUnits().get(entry.getKey()));
+            String iKey = entry.getKey();
+            String metricFieldName = replaceSpecialCharacters(iKey);
+            String unitValue = record.getUnits().get(iKey);
 
+            pointBuilder.tag(String.format("%s_unit", metricFieldName), unitValue == null ? UNAVAILABLE : unitValue);
             pointBuilder.addField(metricFieldName, entry.getValue().doubleValue());
         }
 
         for(Map.Entry<String, Double> entry : record.getFvalues().entrySet()){
-            String metricFieldName = replaceSpecialCharacters(entry.getKey());
-            pointBuilder.tag(String.format("%s_unit", metricFieldName), record.getUnits().get(entry.getKey()));
+            String fKey = entry.getKey();
+            String metricFieldName = replaceSpecialCharacters(fKey);
+            String unitValue = record.getUnits().get(fKey);
 
+            pointBuilder.tag(String.format("%s_unit", metricFieldName), unitValue == null ? UNAVAILABLE : unitValue);
             pointBuilder.addField(metricFieldName, entry.getValue());
         }
     }
 
     static boolean isValid(String fieldName, CharSequence fieldValue){
         if(StringUtils.isEmpty(fieldValue)){
-//            LOGGER.error("There is no value for the field '{}' in record [{}]", fieldName, record);
+            LOGGER.error("There is no value for the field [{}]", fieldName);
             return false;
         }
         // TenantId validation to make sure it contains only alphanum and ‘:’

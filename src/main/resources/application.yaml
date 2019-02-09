@@ -91,6 +91,9 @@ management:
         db: ceres
         uri: http://localhost:8086
         auto-create-db: true
+      stackdriver:
+        project-id: ceres-dev-222017
+        enabled: true
 
 ---
 spring:
@@ -144,6 +147,9 @@ logging:
     org.springframework:
       web: info
       kafka.listener: info
+#    io:
+#      micrometer:
+#        stackdriver: trace
 
 management:
   endpoints:
