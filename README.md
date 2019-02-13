@@ -10,3 +10,6 @@ To run or test ingestion-service locally:
 - Setup following environment variables:
   - Env variable `TEST_KAFKA_BOOTSTRAP_SERVERS` with value `localhost:9092`
   - TODO: Need to add more of env vars.
+
+
+DevOps FTW!
