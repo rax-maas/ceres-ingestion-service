@@ -171,6 +171,11 @@
                 <configuration>
                     <to>
                         <image>${docker.image.prefix}/metrics-ingestion-service</image>
+                        <tags>
+                          <tag>${project.version}</tag>
+                          <tag>${env.SHORT_SHA}</tag>
+                          <tag>${env.BRANCH_NAME}</tag>
+                        </tags>
                     </to>
                 </configuration>
             </plugin>
