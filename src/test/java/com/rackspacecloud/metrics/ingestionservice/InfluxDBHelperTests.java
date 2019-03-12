@@ -43,16 +43,17 @@ public class InfluxDBHelperTests {
         RouteProvider routeProviderMock = mock(RouteProvider.class);
         InfluxDBHelper influxDBHelper = new InfluxDBHelper(restTemplateMock, routeProviderMock);
         String tenantId = "hybrid:1667601";
+        String measurement = "cpu";
         String databaseName = "existing_db";
         String rpName = "existing_rp";
 
         doReturn(getTenantRoutes(tenantId, databaseName, rpName))
-                .when(routeProviderMock).getRoute(tenantId, restTemplateMock);
+                .when(routeProviderMock).getRoute(tenantId, measurement, restTemplateMock);
 
-        System.out.println(String.format("Testing with tenantId:[%s]; databaseName:[%s]; rpName:[%s]",
+        System.out.println(String.format("Testing with tenantIdAndMeasurement:[%s]; databaseName:[%s]; rpName:[%s]",
                 tenantId, databaseName, rpName));
 
-        successfulIngestionTest(influxDBHelper, restTemplateMock, tenantId, databaseName, rpName);
+        successfulIngestionTest(influxDBHelper, restTemplateMock, tenantId, measurement, databaseName, rpName);
     }
 
     @Test
@@ -61,13 +62,14 @@ public class InfluxDBHelperTests {
         RouteProvider routeProviderMock = mock(RouteProvider.class);
         InfluxDBHelper influxDBHelper = new InfluxDBHelper(restTemplateMock, routeProviderMock);
         String tenantId = "hybrid:1667601";
+        String measurement = "cpu";
         String databaseName = "existing_db";
         String rpName = "existing_rp";
 
-        when(routeProviderMock.getRoute(anyString(), any(RestTemplate.class)))
+        when(routeProviderMock.getRoute(anyString(), anyString(), any(RestTemplate.class)))
                 .thenReturn(getTenantRoutes(tenantId, "non_existing_database", rpName));
 
-        successfulIngestionTest(influxDBHelper, restTemplateMock, tenantId, databaseName, rpName);
+        successfulIngestionTest(influxDBHelper, restTemplateMock, tenantId, measurement, databaseName, rpName);
     }
 
     @Test
@@ -77,6 +79,7 @@ public class InfluxDBHelperTests {
         RouteProvider routeProviderMock = mock(RouteProvider.class);
         InfluxDBHelper influxDBHelper = new InfluxDBHelper(restTemplateMock, routeProviderMock);
         String tenantId = "hybrid:1667601";
+        String measurement = "cpu";
         String databaseName = "existing_db";
         String rpName = "existing_rp";
 
@@ -84,15 +87,15 @@ public class InfluxDBHelperTests {
          * Here rpName is different from what routeProvider will provide. Goal is that these two values should
          * be different, so that it's creating a scenario where retention policy does not exist for a given database.
          */
-        when(routeProviderMock.getRoute(anyString(), any()))
+        when(routeProviderMock.getRoute(anyString(), anyString(), any()))
                 .thenReturn(getTenantRoutes(tenantId, databaseName, "non_existing_rp"));
 
-        successfulIngestionTest(influxDBHelper, restTemplateMock, tenantId, databaseName, rpName);
+        successfulIngestionTest(influxDBHelper, restTemplateMock, tenantId, measurement, databaseName, rpName);
     }
 
     private void successfulIngestionTest(
             InfluxDBHelper influxDBHelper, RestTemplate restTemplateMock,
-            String tenantId, String databaseName, String rpName) throws Exception {
+            String tenantId, String measurement, String databaseName, String rpName) throws Exception {
 
         String payloadToIngestInInfluxDB = "valid payload";
         String rollupLevel = "full";
@@ -131,12 +134,12 @@ public class InfluxDBHelperTests {
                 });
 
         Assert.assertTrue("Ingest to influxDB failed in test.",
-                influxDBHelper.ingestToInfluxDb(payloadToIngestInInfluxDB, tenantId, rollupLevel));
+                influxDBHelper.ingestToInfluxDb(payloadToIngestInInfluxDB, tenantId, measurement, rollupLevel));
     }
 
     private TenantRoutes getTenantRoutes(String tenantId, String databaseName, String rpName) {
         TenantRoutes tenantRoutes = new TenantRoutes();
-        tenantRoutes.setTenantId(tenantId);
+        tenantRoutes.setTenantIdAndMeasurement(tenantId);
         Map<String, TenantRoutes.TenantRoute> routes = tenantRoutes.getRoutes();
 
         routes.put("full", new TenantRoutes.TenantRoute(

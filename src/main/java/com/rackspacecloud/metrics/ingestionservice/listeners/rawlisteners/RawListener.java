@@ -3,6 +3,7 @@ package com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners;
 import com.rackspace.maas.model.Metric;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.listeners.UnifiedMetricsListener;
+import com.rackspacecloud.metrics.ingestionservice.listeners.processors.TenantIdAndMeasurement;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.processors.RawMetricsProcessor;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
@@ -18,8 +19,6 @@ import org.springframework.web.client.ResourceAccessException;
 
 import java.util.List;
 import java.util.Map;
-
-import static com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBUtils.replaceSpecialCharacters;
 
 public class RawListener extends UnifiedMetricsListener {
     private InfluxDBHelper influxDBHelper;
@@ -52,7 +51,7 @@ public class RawListener extends UnifiedMetricsListener {
 
         batchProcessedCount++;
 
-        Map<String, List<String>> tenantPayloadsMap =
+        Map<TenantIdAndMeasurement, List<String>> tenantPayloadsMap =
                 RawMetricsProcessor.getTenantPayloadsMap(partitionId, offset, records);
 
         boolean isInfluxDbIngestionSuccessful = writeIntoInfluxDb(tenantPayloadsMap);
@@ -61,16 +60,18 @@ public class RawListener extends UnifiedMetricsListener {
                 partitionId, offset, ack, isInfluxDbIngestionSuccessful);
     }
 
-    private boolean writeIntoInfluxDb(Map<String, List<String>> tenantPayloadsMap) throws Exception {
+    private boolean writeIntoInfluxDb(Map<TenantIdAndMeasurement, List<String>> tenantPayloadsMap) throws Exception {
         boolean isInfluxDbIngestionSuccessful = false;
 
-        for(Map.Entry<String, List<String>> entry : tenantPayloadsMap.entrySet()) {
-            String tenantId = entry.getKey();
+        for(Map.Entry<TenantIdAndMeasurement, List<String>> entry : tenantPayloadsMap.entrySet()) {
+            TenantIdAndMeasurement tenantIdAndMeasurement = entry.getKey();
             String payload = String.join("\n", entry.getValue());
             try {
-                // cleanup tenantId by replacing any special character with "_" before passing it to the function
+                // cleanup tenantIdAndMeasurement by replacing any special character
+                // with "_" before passing it to the function
                 isInfluxDbIngestionSuccessful = influxDBHelper.ingestToInfluxDb(
-                        payload, replaceSpecialCharacters(tenantId), "full");
+                        payload, tenantIdAndMeasurement.getTenantId(),
+                        tenantIdAndMeasurement.getMeasurement(), "full");
                 // TODO: make enum for rollup level
 
             } catch (Exception e) {

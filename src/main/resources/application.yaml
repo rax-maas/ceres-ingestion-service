@@ -66,10 +66,10 @@ kafka:
     source-1440m: unified.metrics.json.1440m
 
   consumer:
-      group: influxdb-consumer-group-test
+      group: influxdb-consumer-group-test-local
 
 tenant-routing-service:
-  url: ${TENANT_ROUTING_SERVICE_URL}
+  url: http://localhost:8081
 
 logging:
   level:
@@ -167,7 +167,7 @@ management:
         enabled: ${statsd.enabled:false}
       influx:
         db: ceres
-        uri: http://data-influxdb:8086
+        uri: ${INFLUXDB_METRICS_URL}
         auto-create-db: true
       stackdriver:
         project-id: ceres-dev-222017

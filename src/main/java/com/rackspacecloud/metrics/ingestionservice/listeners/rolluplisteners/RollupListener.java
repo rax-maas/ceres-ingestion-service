@@ -2,6 +2,7 @@ package com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners;
 
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.listeners.UnifiedMetricsListener;
+import com.rackspacecloud.metrics.ingestionservice.listeners.processors.TenantIdAndMeasurement;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.models.MetricRollup;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.processors.MetricsRollupProcessor;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -128,7 +129,7 @@ public class RollupListener extends UnifiedMetricsListener {
 
         batchProcessedCount++;
 
-        Map<String, List<String>> tenantPayloadsMap =
+        Map<TenantIdAndMeasurement, List<String>> tenantPayloadsMap =
                 MetricsRollupProcessor.getTenantRollupPayloadsMap(partitionId, offset, records);
 
         boolean isInfluxdbIngestionSuccessful = writeToInfluxDb(tenantPayloadsMap, rollupLevel);
@@ -138,18 +139,19 @@ public class RollupListener extends UnifiedMetricsListener {
     }
 
     private boolean writeToInfluxDb(
-            final Map<String, List<String>> tenantPayloadsMap,
+            final Map<TenantIdAndMeasurement, List<String>> tenantPayloadsMap,
             final String rollupLevel) throws Exception {
 
         boolean isInfluxdbIngestionSuccessful = false;
 
-        for(Map.Entry<String, List<String>> entry : tenantPayloadsMap.entrySet()) {
-            String tenantId = entry.getKey();
+        for(Map.Entry<TenantIdAndMeasurement, List<String>> entry : tenantPayloadsMap.entrySet()) {
+            TenantIdAndMeasurement tenantIdAndMeasurement = entry.getKey();
             String payload = String.join("\n", entry.getValue());
             try {
-                // cleanup tenantId by replacing any special character with "_" before passing it to the function
+                // cleanup tenantIdAndMeasurement by replacing any special character with "_" before passing it to the function
                 isInfluxdbIngestionSuccessful = influxDBHelper.ingestToInfluxDb(
-                        payload, replaceSpecialCharacters(tenantId), rollupLevel);
+                        payload, tenantIdAndMeasurement.getTenantId(),
+                        tenantIdAndMeasurement.getMeasurement(), rollupLevel);
 
             } catch (Exception e) {
                 String msg = String.format("Write to InfluxDB failed with exception message [%s].", e.getMessage());

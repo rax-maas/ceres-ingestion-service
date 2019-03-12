@@ -15,6 +15,7 @@ public class Dimension {
     private static final String MONITORING_ZONE = "monitoringZone";
     private static final String ENTITY_ID = "entityId";
     private static final String CHECK_TYPE = "checkType";
+    private static final String TENANT_ID = "tenantId";
 
     Map<String, String> systemMetadata;
     String collectionTarget;
@@ -30,6 +31,9 @@ public class Dimension {
 
         String measurement = dimension.getSystemMetadata().get(CHECK_TYPE);
         if(measurement == null) return null;
+
+        String tenantId = dimension.getSystemMetadata().get(TENANT_ID);
+        if(tenantId == null) return null;
 
         Point.Builder pointBuilder = Point.measurement(replaceSpecialCharacters(measurement));
 

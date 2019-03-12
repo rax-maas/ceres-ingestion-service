@@ -44,10 +44,15 @@ public class InfluxDBHelper {
         private String retentionPolicy;
     }
 
-    private Map<String, InfluxDbInfoForRollupLevel> getInfluxDbInfo(final String tenantId) throws Exception {
-        if(influxDbInfoMap.containsKey(tenantId)) return influxDbInfoMap.get(tenantId);
+    private Map<String, InfluxDbInfoForRollupLevel> getInfluxDbInfo(
+            final String tenantId, final String measurement) throws Exception {
 
-        TenantRoutes tenantRoutes = getTenantRoutes(tenantId);
+        String tenantIdAndMeasurementKey = String.format("%s:%s", tenantId, measurement);
+
+        if(influxDbInfoMap.containsKey(tenantIdAndMeasurementKey))
+            return influxDbInfoMap.get(tenantIdAndMeasurementKey);
+
+        TenantRoutes tenantRoutes = getTenantRoutes(tenantId, measurement);
 
         Map<String, InfluxDbInfoForRollupLevel> influxDbInfoForTenant = new HashMap<>();
 
@@ -93,19 +98,19 @@ public class InfluxDBHelper {
             }
         }
 
-        influxDbInfoMap.put(tenantId, influxDbInfoForTenant);
+        influxDbInfoMap.put(tenantIdAndMeasurementKey, influxDbInfoForTenant);
 
         return influxDbInfoForTenant;
     }
 
-    private TenantRoutes getTenantRoutes(String tenantId) throws Exception {
+    private TenantRoutes getTenantRoutes(String tenantId, String measurement) throws Exception {
         TenantRoutes tenantRoutes;
 
         try {
-            tenantRoutes = routeProvider.getRoute(tenantId, restTemplate);
+            tenantRoutes = routeProvider.getRoute(tenantId, measurement, restTemplate);
         }
         catch(Exception e) {
-            String errMsg = String.format("Failed to get routes for tenantId [%s]", tenantId);
+            String errMsg = String.format("Failed to get routes for tenantIdAndMeasurement [%s]", tenantId);
             LOGGER.error(errMsg, e);
             throw new Exception(errMsg, e);
         }
@@ -238,9 +243,10 @@ public class InfluxDBHelper {
         return false;
     }
 
-    public boolean ingestToInfluxDb(String payload, String tenantId, String rollupLevel) throws Exception {
+    public boolean ingestToInfluxDb(
+            String payload, String tenantId, String measurement, String rollupLevel) throws Exception {
         // Get db and URL info to route data to
-        Map<String, InfluxDbInfoForRollupLevel> influxDbInfoForTenant = getInfluxDbInfo(tenantId);
+        Map<String, InfluxDbInfoForRollupLevel> influxDbInfoForTenant = getInfluxDbInfo(tenantId, measurement);
         InfluxDbInfoForRollupLevel influxDbInfoForRollupLevel = influxDbInfoForTenant.get(rollupLevel);
 
         if(influxDbInfoForRollupLevel == null) return false;

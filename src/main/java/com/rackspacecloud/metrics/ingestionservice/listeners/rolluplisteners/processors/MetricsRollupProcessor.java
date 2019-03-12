@@ -2,6 +2,7 @@ package com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.pr
 
 import com.rackspacecloud.metrics.ingestionservice.influxdb.Point;
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.Dimension;
+import com.rackspacecloud.metrics.ingestionservice.listeners.processors.TenantIdAndMeasurement;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.models.MetricRollup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,7 +21,8 @@ import static com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBUtils.re
  */
 public class MetricsRollupProcessor {
     private static final Logger LOGGER = LoggerFactory.getLogger(MetricsRollupProcessor.class);
-    private static final String TENANT_ID = "tenantId";
+    private static final String TENANT_ID = "tenantIdAndMeasurement";
+    private static final String CHECK_TYPE = "checkType";
 
     private static Dimension getDimensions(MetricRollup record) {
         Dimension dimension = new Dimension();
@@ -40,10 +42,10 @@ public class MetricsRollupProcessor {
      * @param records
      * @return
      */
-    public static final Map<String, List<String>> getTenantRollupPayloadsMap(
+    public static final Map<TenantIdAndMeasurement, List<String>> getTenantRollupPayloadsMap(
             int partitionId, long offset, List<MetricRollup> records) {
 
-        Map<String, List<String>> tenantPayloadMap = new HashMap<>();
+        Map<TenantIdAndMeasurement, List<String>> tenantPayloadMap = new HashMap<>();
         int numberOfRecordsNotConvertedIntoInfluxDBPoints = 0;
 
         for(MetricRollup record : records) {
@@ -55,6 +57,12 @@ public class MetricsRollupProcessor {
                 throw new IllegalArgumentException(String.format("Invalid tenant Id: [%s]", tenantId));
             }
 
+            String measurement = record.getSystemMetadata().get(CHECK_TYPE);
+            if (!isValid(CHECK_TYPE, measurement, record)) {
+                LOGGER.error("Invalid measurement [{}] in the received record [{}]", measurement, record);
+                throw new IllegalArgumentException(String.format("Invalid measurement: [%s]", measurement));
+            }
+
             Dimension dimension = getDimensions(record);
 
             try {
@@ -62,9 +70,12 @@ public class MetricsRollupProcessor {
                 populatePayload(record, pointBuilder);
                 Point point =  pointBuilder.build();
 
-                if (!tenantPayloadMap.containsKey(tenantId)) tenantPayloadMap.put(tenantId, new ArrayList<>());
+                TenantIdAndMeasurement tenantIdAndMeasurement = new TenantIdAndMeasurement(tenantId, measurement);
 
-                List<String> payloads = tenantPayloadMap.get(tenantId);
+                if (!tenantPayloadMap.containsKey(tenantIdAndMeasurement))
+                    tenantPayloadMap.put(tenantIdAndMeasurement, new ArrayList<>());
+
+                List<String> payloads = tenantPayloadMap.get(tenantIdAndMeasurement);
                 payloads.add(point.lineProtocol(TimeUnit.SECONDS));
             }
             catch (Exception ex) {
@@ -130,7 +141,7 @@ public class MetricsRollupProcessor {
         }
         // TenantId validation to make sure it contains only alphanum and ‘:’
         else if(fieldName.equals(TENANT_ID) && !(fieldValue.toString()).matches("^[a-zA-Z0-9:]*$")){
-            LOGGER.error("Invalid tenantId '{}' found.", fieldValue);
+            LOGGER.error("Invalid tenantIdAndMeasurement '{}' found.", fieldValue);
             return false;
         }
 

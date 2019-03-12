@@ -8,7 +8,7 @@ import java.util.Map;
 
 @Data
 public class TenantRoutes {
-    private String tenantId;
+    private String tenantIdAndMeasurement;
     private Map<String, TenantRoute> routes;
 
     public TenantRoutes() {
@@ -22,7 +22,6 @@ public class TenantRoutes {
         private String databaseName;
         private String retentionPolicyName;
         private String retentionPolicy;
-        private int maxSeriesCount;
 
         public TenantRoute(String path, String databaseName, String retentionPolicyName,
                            String retentionPolicy, int maxSeriesCount){
@@ -30,7 +29,6 @@ public class TenantRoutes {
             this.databaseName = databaseName;
             this.retentionPolicyName = retentionPolicyName;
             this.retentionPolicy = retentionPolicy;
-            this.maxSeriesCount = maxSeriesCount;
         }
     }
 }

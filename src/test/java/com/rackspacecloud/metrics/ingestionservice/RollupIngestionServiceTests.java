@@ -92,7 +92,8 @@ public class RollupIngestionServiceTests {
 
     private void testForGivenTopic(String topicToSendData) throws Exception {
         // Mock influxDB ingestion call
-        when(this.influxDBHelperMock.ingestToInfluxDb(anyString(), anyString(), anyString())).thenReturn(true);
+        when(this.influxDBHelperMock.ingestToInfluxDb(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(true);
 
         for(int i = 0; i < 1; i++) {
             sender.sendRollup(

@@ -53,7 +53,8 @@ public class IngestionServiceApplicationTests {
 	@Test
     public void testSuccessfulRawDataConsumption() throws Exception {
         // Mock influxDB ingestion call
-        when(this.influxDBHelperMock.ingestToInfluxDb(anyString(), anyString(), anyString())).thenReturn(true);
+        when(this.influxDBHelperMock.ingestToInfluxDb(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(true);
 
 	    for(int i = 0; i < 1; i++) {
             sender.send(
@@ -70,7 +71,7 @@ public class IngestionServiceApplicationTests {
     @Test
     public void test_whenIngestToInfluxDBThrowsException_globalExceptionHandlerCatches() throws Exception {
         // Mock influxDB ingestion call
-        when(this.influxDBHelperMock.ingestToInfluxDb(anyString(), anyString(), anyString()))
+        when(this.influxDBHelperMock.ingestToInfluxDb(anyString(), anyString(), anyString(), anyString()))
                 .thenThrow(new Exception("test_whenIngestToInfluxDBThrowsException_globalExceptionHandlerCatches"));
 
         for(int i = 0; i < 1; i++) {

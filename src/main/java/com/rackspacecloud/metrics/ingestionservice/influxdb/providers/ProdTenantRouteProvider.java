@@ -8,8 +8,8 @@ public class ProdTenantRouteProvider implements RouteProvider {
     private String tenantRoutingServiceUrl;
 
     @Override
-    public TenantRoutes getRoute(String tenantId, RestTemplate restTemplate) {
-        String requestUrl = String.format("%s/%s", tenantRoutingServiceUrl, tenantId);
+    public TenantRoutes getRoute(String tenantId, String measurement, RestTemplate restTemplate) {
+        String requestUrl = String.format("%s/%s/%s", tenantRoutingServiceUrl, tenantId, measurement);
 
         //TODO: Work on any exception handling if restTemplate throws exception
         return restTemplate.getForObject(requestUrl, TenantRoutes.class);
