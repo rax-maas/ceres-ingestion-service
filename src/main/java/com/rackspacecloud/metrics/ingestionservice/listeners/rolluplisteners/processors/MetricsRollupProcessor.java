@@ -1,6 +1,7 @@
 package com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.processors;
 
 import com.rackspacecloud.metrics.ingestionservice.influxdb.Point;
+import com.rackspacecloud.metrics.ingestionservice.listeners.processors.CommonMetricsProcessor;
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.Dimension;
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.TenantIdAndMeasurement;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.models.MetricRollup;
@@ -21,16 +22,20 @@ import static com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBUtils.re
  */
 public class MetricsRollupProcessor {
     private static final Logger LOGGER = LoggerFactory.getLogger(MetricsRollupProcessor.class);
-    private static final String TENANT_ID = "tenantIdAndMeasurement";
-    private static final String CHECK_TYPE = "checkType";
 
     private static Dimension getDimensions(MetricRollup record) {
         Dimension dimension = new Dimension();
-        dimension.setCollectionLabel(record.getCollectionLabel());
-        dimension.setCollectionTarget(record.getCollectionTarget());
+        dimension.setAccountType(record.getAccountType());
+        dimension.setAccount(record.getAccount());
+        dimension.setDevice(record.getDevice());
         dimension.setDeviceLabel(record.getDeviceLabel());
+        dimension.setDeviceMetadata(record.getDeviceMetadata());
         dimension.setMonitoringSystem(record.getMonitoringSystem());
         dimension.setSystemMetadata(record.getSystemMetadata());
+        dimension.setCollectionName(record.getCollectionName());
+        dimension.setCollectionLabel(record.getCollectionLabel());
+        dimension.setCollectionTarget(record.getCollectionTarget());
+        dimension.setCollectionMetadata(record.getCollectionMetadata());
 
         return dimension;
     }
@@ -51,26 +56,21 @@ public class MetricsRollupProcessor {
         for(MetricRollup record : records) {
             LOGGER.debug("Received partitionId:{}; Offset:{}; record:{}", partitionId, offset, record);
 
-            String tenantId = record.getSystemMetadata().get(TENANT_ID);
-            if (!isValid(TENANT_ID, tenantId, record)) {
-                LOGGER.error("Invalid tenant ID [{}] in the received record [{}]", tenantId, record);
-                throw new IllegalArgumentException(String.format("Invalid tenant Id: [%s]", tenantId));
-            }
+            String accountType = record.getAccountType();
+            String account = record.getAccount();
+            String monitoringSystem = record.getMonitoringSystem();
+            String collectionName = record.getCollectionName();
 
-            String measurement = record.getSystemMetadata().get(CHECK_TYPE);
-            if (!isValid(CHECK_TYPE, measurement, record)) {
-                LOGGER.error("Invalid measurement [{}] in the received record [{}]", measurement, record);
-                throw new IllegalArgumentException(String.format("Invalid measurement: [%s]", measurement));
-            }
+            TenantIdAndMeasurement tenantIdAndMeasurement =
+                    CommonMetricsProcessor.getTenantIdAndMeasurement(
+                            accountType, account, monitoringSystem, collectionName);
 
             Dimension dimension = getDimensions(record);
 
             try {
-                Point.Builder pointBuilder = Dimension.populateTagsAndFields(dimension);
+                Point.Builder pointBuilder = Dimension.populateTagsAndFields(dimension, tenantIdAndMeasurement);
                 populatePayload(record, pointBuilder);
                 Point point =  pointBuilder.build();
-
-                TenantIdAndMeasurement tenantIdAndMeasurement = new TenantIdAndMeasurement(tenantId, measurement);
 
                 if (!tenantPayloadMap.containsKey(tenantIdAndMeasurement))
                     tenantPayloadMap.put(tenantIdAndMeasurement, new ArrayList<>());
@@ -132,19 +132,5 @@ public class MetricsRollupProcessor {
                     String.format("%s_%s", metricFieldName, "max"),
                     rollupBucketDouble.getMax().doubleValue());
         }
-    }
-
-    private static boolean isValid(String fieldName, CharSequence fieldValue, MetricRollup record){
-        if(StringUtils.isEmpty(fieldValue)){
-            LOGGER.error("There is no value for the field '{}' in record [{}]", fieldName, record);
-            return false;
-        }
-        // TenantId validation to make sure it contains only alphanum and ‘:’
-        else if(fieldName.equals(TENANT_ID) && !(fieldValue.toString()).matches("^[a-zA-Z0-9:]*$")){
-            LOGGER.error("Invalid tenantIdAndMeasurement '{}' found.", fieldValue);
-            return false;
-        }
-
-        return true;
     }
 }

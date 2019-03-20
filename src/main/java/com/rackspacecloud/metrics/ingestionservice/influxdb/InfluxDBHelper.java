@@ -110,7 +110,8 @@ public class InfluxDBHelper {
             tenantRoutes = routeProvider.getRoute(tenantId, measurement, restTemplate);
         }
         catch(Exception e) {
-            String errMsg = String.format("Failed to get routes for tenantIdAndMeasurement [%s]", tenantId);
+            String errMsg = String.format(
+                    "Failed to get routes for tenantId and measurement [%s]", tenantId, measurement);
             LOGGER.error(errMsg, e);
             throw new Exception(errMsg, e);
         }

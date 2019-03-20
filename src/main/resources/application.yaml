@@ -44,7 +44,7 @@ rest-template:
     max-total: 5 # Max number of connection to pool
 
 kafka:
-  servers: ${TEST_KAFKA_BOOTSTRAP_SERVERS}
+  servers: ${KAFKA_BOOTSTRAP_SERVERS}
   listener-container-idle-interval: ${LISTENER_CONTAINER_IDLE_INTERVAL}
   session-timeout-ms-config: ${SESSION_TIMEOUT_MS_CONFIG}
 

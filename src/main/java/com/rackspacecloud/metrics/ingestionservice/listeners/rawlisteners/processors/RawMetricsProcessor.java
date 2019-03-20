@@ -1,14 +1,12 @@
 package com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.processors;
 
-import com.rackspace.maas.model.Metric;
+import com.rackspace.monplat.protocol.ExternalMetric;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.Point;
+import com.rackspacecloud.metrics.ingestionservice.listeners.processors.CommonMetricsProcessor;
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.Dimension;
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.TenantIdAndMeasurement;
-import lombok.Data;
-import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.util.StringUtils;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -25,56 +23,38 @@ public class RawMetricsProcessor {
     private static final String UNAVAILABLE = "unavailable";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RawMetricsProcessor.class);
-    private static final String TENANT_ID = "tenantId";
-    private static final String CHECK_TYPE = "checkType";
-
-    private static Dimension getDimensions(Metric record) {
-        Dimension dimension = new Dimension();
-        dimension.setCollectionLabel(record.getCollectionLabel());
-        dimension.setCollectionTarget(record.getCollectionTarget());
-        dimension.setDeviceLabel(record.getDeviceLabel());
-        dimension.setMonitoringSystem(record.getMonitoringSystem().name());
-        dimension.setSystemMetadata(record.getSystemMetadata());
-
-        return dimension;
-    }
 
     public static final Map<TenantIdAndMeasurement, List<String>> getTenantPayloadsMap(
-            int partitionId, long offset, List<Metric> records) throws Exception {
+            int partitionId, long offset, List<ExternalMetric> records) throws Exception {
 
         Map<TenantIdAndMeasurement, List<String>> tenantPayloadMap = new HashMap<>();
         int numberOfRecordsNotConvertedIntoInfluxDBPoints = 0;
 
-        for(Metric record : records) {
+        for(ExternalMetric record : records) {
             LOGGER.debug("Received partitionId:{}; Offset:{}; record:{}", partitionId, offset, record);
 
-            if(!isValid(TIMESTAMP, record.getTimestamp()))
+            if(!CommonMetricsProcessor.isValid(TIMESTAMP, record.getTimestamp()))
                 throw new Exception("Invalid timestamp [" + record.getTimestamp() + "]");
 
-            Dimension dimension = getDimensions(record);
+            Dimension dimension = CommonMetricsProcessor.getDimensions(record);
 
             try {
-                String tenantId = dimension.getSystemMetadata().get(TENANT_ID);
-                if (!isValid(TENANT_ID, tenantId)) {
-                    LOGGER.error("Invalid tenant ID [{}] in the received record [{}]", tenantId, record);
-                    throw new IllegalArgumentException(String.format("Invalid tenant Id: [%s]", tenantId));
-                }
+                String accountType = record.getAccountType().name();
+                String account = record.getAccount();
+                String monitoringSystem = record.getMonitoringSystem().name();
+                String collectionName = record.getCollectionName();
 
-                String measurement = dimension.getSystemMetadata().get(CHECK_TYPE);
-                if (!isValid(CHECK_TYPE, measurement)) {
-                    LOGGER.error("Invalid measurement [{}] in the received record [{}]", measurement, record);
-                    throw new IllegalArgumentException(String.format("Invalid measurement: [%s]", measurement));
-                }
+                TenantIdAndMeasurement tenantIdAndMeasurement =
+                        CommonMetricsProcessor.getTenantIdAndMeasurement(
+                                accountType, account, monitoringSystem, collectionName);
 
-                Point.Builder pointBuilder = Dimension.populateTagsAndFields(dimension);
+                Point.Builder pointBuilder = Dimension.populateTagsAndFields(dimension, tenantIdAndMeasurement);
                 populatePayload(record, pointBuilder);
 
                 Instant instant = Instant.parse(record.getTimestamp());
                 pointBuilder.time(instant.getEpochSecond(), TimeUnit.SECONDS);
 
                 Point point = pointBuilder.build();
-
-                TenantIdAndMeasurement tenantIdAndMeasurement = new TenantIdAndMeasurement(tenantId, measurement);
 
                 if (!tenantPayloadMap.containsKey(tenantIdAndMeasurement))
                     tenantPayloadMap.put(tenantIdAndMeasurement, new ArrayList<>());
@@ -96,7 +76,7 @@ public class RawMetricsProcessor {
         return tenantPayloadMap;
     }
 
-    static void populatePayload(final Metric record, final Point.Builder pointBuilder) {
+    static void populatePayload(final ExternalMetric record, final Point.Builder pointBuilder) {
         for(Map.Entry<String, Long> entry : record.getIvalues().entrySet()){
             String iKey = entry.getKey();
             String metricFieldName = replaceSpecialCharacters(iKey);
@@ -114,19 +94,5 @@ public class RawMetricsProcessor {
             pointBuilder.tag(String.format("%s_unit", metricFieldName), unitValue == null ? UNAVAILABLE : unitValue);
             pointBuilder.addField(metricFieldName, entry.getValue());
         }
-    }
-
-    static boolean isValid(String fieldName, CharSequence fieldValue){
-        if(StringUtils.isEmpty(fieldValue)){
-            LOGGER.error("There is no value for the field [{}]", fieldName);
-            return false;
-        }
-        // TenantId validation to make sure it contains only alphanum and ‘:’
-        else if(fieldName.equals(TENANT_ID) && !(fieldValue.toString()).matches("^[a-zA-Z0-9:]*$")){
-            LOGGER.error("Invalid tenantIdAndMeasurement '{}' found.", fieldValue);
-            return false;
-        }
-
-        return true;
     }
 }

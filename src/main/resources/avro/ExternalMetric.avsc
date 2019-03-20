@@ -1,7 +1,7 @@
 {
   "type": "record",
-  "name": "Metric",
-  "namespace": "com.rackspace.maas.model",
+  "name": "ExternalMetric",
+  "namespace": "com.rackspace.monplat.protocol",
   "fields": [
     {
       "name": "timestamp",
@@ -13,11 +13,12 @@
       "type": {
         "name": "AccountType",
         "type": "enum",
-        "default": "UNKOWN",
+        "default": "UNKNOWN",
         "symbols": [
-          "UNKOWN",
+          "UNKNOWN",
           "CORE",
-          "ENCORE"
+          "ENCORE",
+          "RCN"
         ]
       }
     },
@@ -27,11 +28,13 @@
     },
     {
       "name": "device",
-      "type": "string"
+      "type": "string",
+      "default": ""
     },
     {
       "name": "deviceLabel",
-      "type": "string"
+      "type": "string",
+      "default": ""
     },
     {
       "name": "deviceMetadata",
@@ -49,7 +52,8 @@
         "type": "enum",
         "symbols": [
           "MAAS",
-          "UIM"
+          "UIM",
+          "SALUS"
         ]
       }
     },
@@ -62,12 +66,18 @@
       }
     },
     {
-      "name": "collectionLabel",
+      "name": "collectionName",
       "type": "string"
     },
     {
+      "name": "collectionLabel",
+      "type": "string",
+      "default": ""
+    },
+    {
       "name": "collectionTarget",
-      "type": "string"
+      "type": "string",
+      "default": ""
     },
     {
       "name": "collectionMetadata",

@@ -1,6 +1,6 @@
 package com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners;
 
-import com.rackspace.maas.model.Metric;
+import com.rackspace.monplat.protocol.ExternalMetric;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.listeners.UnifiedMetricsListener;
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.TenantIdAndMeasurement;
@@ -44,7 +44,7 @@ public class RawListener extends UnifiedMetricsListener {
             errorHandler = "listenerErrorHandler"
     )
     public boolean listenUnifiedMetricsTopic(
-            @Payload final List<Metric> records,
+            @Payload final List<ExternalMetric> records,
             @Header(KafkaHeaders.RECEIVED_PARTITION_ID) final int partitionId,
             @Header(KafkaHeaders.OFFSET) final long offset,
             final Acknowledgment ack) throws Exception {

@@ -1,8 +1,8 @@
 package com.rackspacecloud.metrics.ingestionservice.producer;
 
-import com.rackspace.maas.model.AccountType;
-import com.rackspace.maas.model.Metric;
-import com.rackspace.maas.model.MonitoringSystem;
+import com.rackspace.monplat.protocol.AccountType;
+import com.rackspace.monplat.protocol.ExternalMetric;
+import com.rackspace.monplat.protocol.MonitoringSystem;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -11,8 +11,8 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class MockMetricHelper {
 
-    public static Metric getValidMetric(int i, String tenantId, boolean wantIValues){
-        Metric metric = new Metric();
+    public static ExternalMetric getValidMetric(int i, String tenantId, boolean wantIValues){
+        ExternalMetric metric = new ExternalMetric();
 
         metric.setAccount("1234567");
         metric.setAccountType(AccountType.CORE);

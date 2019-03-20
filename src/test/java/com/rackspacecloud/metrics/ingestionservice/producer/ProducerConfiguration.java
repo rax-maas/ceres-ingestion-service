@@ -1,6 +1,6 @@
 package com.rackspacecloud.metrics.ingestionservice.producer;
 
-import com.rackspace.maas.model.Metric;
+import com.rackspace.monplat.protocol.ExternalMetric;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.models.MetricRollup;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -33,12 +33,12 @@ public class ProducerConfiguration {
     }
 
     @Bean
-    public ProducerFactory<String, Metric> rawProducerFactory() {
+    public ProducerFactory<String, ExternalMetric> rawProducerFactory() {
         return new DefaultKafkaProducerFactory<>(rawProducerConfig());
     }
 
     @Bean
-    public KafkaTemplate<String, Metric> rawKafkaTemplate() {
+    public KafkaTemplate<String, ExternalMetric> rawKafkaTemplate() {
         return new KafkaTemplate<>(rawProducerFactory());
     }
 
