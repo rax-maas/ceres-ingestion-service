@@ -39,7 +39,7 @@ public class RawDataConsumerConfiguration {
     @Profile("development")
     ConsumerProperties devConsumerProperties() {
         ConsumerProperties consumerProperties = new RawDataConsumerProperties(properties);
-        consumerProperties.addSslConfig();
+//        consumerProperties.addSslConfig();
         return consumerProperties;
     }
 

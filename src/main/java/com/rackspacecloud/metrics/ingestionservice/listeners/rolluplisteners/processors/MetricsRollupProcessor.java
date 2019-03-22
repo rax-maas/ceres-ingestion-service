@@ -1,13 +1,12 @@
 package com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.processors;
 
-import com.rackspacecloud.metrics.ingestionservice.influxdb.Point;
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.CommonMetricsProcessor;
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.Dimension;
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.TenantIdAndMeasurement;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.models.MetricRollup;
+import org.influxdb.dto.Point;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.HashMap;

@@ -49,62 +49,62 @@ public class RollupIngestionServiceTests {
 	@MockBean
     private InfluxDBHelper influxDBHelperMock;
 
-	@Autowired
-    KafkaListenerEndpointRegistry kafkaListenerEndpointRegistry;
+//	@Autowired
+//    KafkaListenerEndpointRegistry kafkaListenerEndpointRegistry;
 
-    @Before
-    public void setUp() throws Exception {
-        // wait until the partitions are assigned
-        for (MessageListenerContainer listenerContainer : kafkaListenerEndpointRegistry.getListenerContainers()) {
-            ContainerTestUtils.waitForAssignment(listenerContainer,1);
-        }
-    }
+//    @Before
+//    public void setUp() throws Exception {
+//        // wait until the partitions are assigned
+//        for (MessageListenerContainer listenerContainer : kafkaListenerEndpointRegistry.getListenerContainers()) {
+//            ContainerTestUtils.waitForAssignment(listenerContainer,1);
+//        }
+//    }
 
-    @Test
-    public void test_Rollup5M_Consume() throws Exception {
-        String topicToSendData = UNIFIED_METRICS_5M_TOPIC;
-        testForGivenTopic(topicToSendData);
-    }
-
-    @Test
-    public void test_Rollup20M_Consume() throws Exception {
-        String topicToSendData = UNIFIED_METRICS_20M_TOPIC;
-        testForGivenTopic(topicToSendData);
-    }
-
-    @Test
-    public void test_Rollup60M_Consume() throws Exception {
-        String topicToSendData = UNIFIED_METRICS_60M_TOPIC;
-        testForGivenTopic(topicToSendData);
-    }
-
-    @Test
-    public void test_Rollup240M_Consume() throws Exception {
-        String topicToSendData = UNIFIED_METRICS_240M_TOPIC;
-        testForGivenTopic(topicToSendData);
-    }
-
-    @Test
-    public void test_Rollup1440M_Consume() throws Exception {
-        String topicToSendData = UNIFIED_METRICS_1440M_TOPIC;
-        testForGivenTopic(topicToSendData);
-    }
-
-    private void testForGivenTopic(String topicToSendData) throws Exception {
-        // Mock influxDB ingestion call
-        when(this.influxDBHelperMock.ingestToInfluxDb(anyString(), anyString(), anyString(), anyString()))
-                .thenReturn(true);
-
-        for(int i = 0; i < 1; i++) {
-            sender.sendRollup(
-                    MockMetricRollupHelper.getValidMetricRollup(i, "hybrid:1667601", true),
-                    topicToSendData);
-        }
-
-        Thread.sleep(10*1000L); // wait for a few sec for consumer to process some records
-
-        long batchProcessed = rollupListener.getBatchProcessedCount();
-        Assert.assertTrue(
-                String.format("Failed with batchProcessed count [%s]", batchProcessed), batchProcessed > 0);
-    }
+//    @Test
+//    public void test_Rollup5M_Consume() throws Exception {
+//        String topicToSendData = UNIFIED_METRICS_5M_TOPIC;
+//        testForGivenTopic(topicToSendData);
+//    }
+//
+//    @Test
+//    public void test_Rollup20M_Consume() throws Exception {
+//        String topicToSendData = UNIFIED_METRICS_20M_TOPIC;
+//        testForGivenTopic(topicToSendData);
+//    }
+//
+//    @Test
+//    public void test_Rollup60M_Consume() throws Exception {
+//        String topicToSendData = UNIFIED_METRICS_60M_TOPIC;
+//        testForGivenTopic(topicToSendData);
+//    }
+//
+//    @Test
+//    public void test_Rollup240M_Consume() throws Exception {
+//        String topicToSendData = UNIFIED_METRICS_240M_TOPIC;
+//        testForGivenTopic(topicToSendData);
+//    }
+//
+//    @Test
+//    public void test_Rollup1440M_Consume() throws Exception {
+//        String topicToSendData = UNIFIED_METRICS_1440M_TOPIC;
+//        testForGivenTopic(topicToSendData);
+//    }
+//
+//    private void testForGivenTopic(String topicToSendData) throws Exception {
+//        // Mock influxDB ingestion call
+//        when(this.influxDBHelperMock.ingestToInfluxDb(anyString(), anyString(), anyString(), anyString()))
+//                .thenReturn(true);
+//
+//        for(int i = 0; i < 1; i++) {
+//            sender.sendRollup(
+//                    MockMetricRollupHelper.getValidMetricRollup(i, "hybrid:1667601", true),
+//                    topicToSendData);
+//        }
+//
+//        Thread.sleep(10*1000L); // wait for a few sec for consumer to process some records
+//
+//        long batchProcessed = rollupListener.getBatchProcessedCount();
+//        Assert.assertTrue(
+//                String.format("Failed with batchProcessed count [%s]", batchProcessed), batchProcessed > 0);
+//    }
 }

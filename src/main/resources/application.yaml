@@ -44,7 +44,7 @@ rest-template:
     max-total: 5 # Max number of connection to pool
 
 kafka:
-  servers: ${KAFKA_BOOTSTRAP_SERVERS}
+  servers: ${TEST_KAFKA_BOOTSTRAP_SERVERS}
   listener-container-idle-interval: ${LISTENER_CONTAINER_IDLE_INTERVAL}
   session-timeout-ms-config: ${SESSION_TIMEOUT_MS_CONFIG}
 
@@ -77,6 +77,7 @@ logging:
     org.springframework:
       web: info
       kafka.listener: info
+    okhttp3: warn
 
 management:
   endpoints:
@@ -147,6 +148,7 @@ logging:
     org.springframework:
       web: info
       kafka.listener: info
+    okhttp3: warn
 #    io:
 #      micrometer:
 #        stackdriver: trace
@@ -172,3 +174,5 @@ management:
       stackdriver:
         project-id: ceres-dev-222017
         enabled: true
+        batch-size: 150
+        num-threads: 10

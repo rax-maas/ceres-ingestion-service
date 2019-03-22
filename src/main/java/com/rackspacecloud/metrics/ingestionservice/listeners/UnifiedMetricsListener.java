@@ -34,26 +34,25 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
         LOGGER.info("Registering seekCallback at [{}]", Instant.now());
     }
 
-    protected boolean processPostInfluxDbIngestion(
-            final String recordsString, final int partitionId, final long offset,
-            final Acknowledgment ack, final boolean isInfluxdbIngestionSuccessful) {
+    protected void processPostInfluxDbIngestion(
+            final String recordsString, final int partitionId,
+            final long offset, final Acknowledgment ack) {
 
-        boolean isSuccessful = isInfluxdbIngestionSuccessful;
+        ack.acknowledge();
+        LOGGER.debug("Successfully processed partitionId:{}, offset:{} at {}", partitionId, offset, Instant.now());
 
-        if (isInfluxdbIngestionSuccessful) {
-            ack.acknowledge();
-            LOGGER.debug("Successfully processed partitionId:{}, offset:{} at {}",
-                    partitionId, offset, Instant.now());
-
-            if (batchProcessedCount % MESSAGE_PROCESS_REPORT_COUNT == 0) {
-                LOGGER.info("Processed {} batches.", batchProcessedCount);
-            }
-        } else {
-            LOGGER.error("FAILED at {}: partitionId:{}, offset:{}, processing a batch of given records [{}]",
-                    Instant.now(), partitionId, offset, recordsString);
-            // TODO: retry? OR write messages into some 'maas_metrics_error' topic, so that later on
-            // we can read it from that error topic
+        if (batchProcessedCount % MESSAGE_PROCESS_REPORT_COUNT == 0) {
+            LOGGER.info("Processed {} batches.", batchProcessedCount);
         }
+
+//        if (isInfluxdbIngestionSuccessful) {
+//
+//        } else {
+//            LOGGER.error("FAILED at {}: partitionId:{}, offset:{}, processing a batch of given records [{}]",
+//                    Instant.now(), partitionId, offset, recordsString);
+//            // TODO: retry? OR write messages into some 'maas_metrics_error' topic, so that later on
+//            // we can read it from that error topic
+//        }
 
         LOGGER.debug("Done processing for records:{}", recordsString);
 
@@ -63,8 +62,6 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
         if(batchProcessedCount % MESSAGE_PROCESS_REPORT_COUNT == 0) {
             LOGGER.info("Processed {} batches so far after start or reset...", getBatchProcessedCount());
         }
-
-        return isSuccessful;
     }
 
     @Override

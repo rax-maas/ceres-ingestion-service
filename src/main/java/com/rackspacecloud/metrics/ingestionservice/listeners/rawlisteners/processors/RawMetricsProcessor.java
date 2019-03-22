@@ -1,10 +1,10 @@
 package com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.processors;
 
 import com.rackspace.monplat.protocol.ExternalMetric;
-import com.rackspacecloud.metrics.ingestionservice.influxdb.Point;
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.CommonMetricsProcessor;
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.Dimension;
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.TenantIdAndMeasurement;
+import org.influxdb.dto.Point;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,13 +36,14 @@ public class RawMetricsProcessor {
             if(!CommonMetricsProcessor.isValid(TIMESTAMP, record.getTimestamp()))
                 throw new Exception("Invalid timestamp [" + record.getTimestamp() + "]");
 
+            // Get all of the tags into Dimension
             Dimension dimension = CommonMetricsProcessor.getDimensions(record);
 
             try {
-                String accountType = record.getAccountType().name();
-                String account = record.getAccount();
-                String monitoringSystem = record.getMonitoringSystem().name();
-                String collectionName = record.getCollectionName();
+                String accountType = dimension.getAccountType(); //record.getAccountType().name();
+                String account = dimension.getAccount(); //record.getAccount();
+                String monitoringSystem = dimension.getMonitoringSystem(); //record.getMonitoringSystem().name();
+                String collectionName = dimension.getCollectionName(); //record.getCollectionName();
 
                 TenantIdAndMeasurement tenantIdAndMeasurement =
                         CommonMetricsProcessor.getTenantIdAndMeasurement(

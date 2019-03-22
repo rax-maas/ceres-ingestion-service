@@ -50,41 +50,41 @@ public class IngestionServiceApplicationTests {
 	public void contextLoads() {
 	}
 
-	@Test
-    public void testSuccessfulRawDataConsumption() throws Exception {
-        // Mock influxDB ingestion call
-        when(this.influxDBHelperMock.ingestToInfluxDb(anyString(), anyString(), anyString(), anyString()))
-                .thenReturn(true);
+//	@Test
+//    public void testSuccessfulRawDataConsumption() throws Exception {
+//        // Mock influxDB ingestion call
+//        when(this.influxDBHelperMock.ingestToInfluxDb(anyString(), anyString(), anyString(), anyString()))
+//                .thenReturn(true);
+//
+//	    for(int i = 0; i < 1; i++) {
+//            sender.send(
+//                    MockMetricHelper.getValidMetric(i, "hybrid:1667601", true),
+//                    UNIFIED_METRICS_TOPIC);
+//        }
+//
+//        Thread.sleep(10*1000L); // wait for a few sec for consumer to process some records
+//
+//        long batchProcessed = rawListener.getBatchProcessedCount();
+//        Assert.assertTrue(batchProcessed > 0);
+//    }
 
-	    for(int i = 0; i < 1; i++) {
-            sender.send(
-                    MockMetricHelper.getValidMetric(i, "hybrid:1667601", true),
-                    UNIFIED_METRICS_TOPIC);
-        }
-
-        Thread.sleep(10*1000L); // wait for a few sec for consumer to process some records
-
-        long batchProcessed = rawListener.getBatchProcessedCount();
-        Assert.assertTrue(batchProcessed > 0);
-    }
-
-    @Test
-    public void test_whenIngestToInfluxDBThrowsException_globalExceptionHandlerCatches() throws Exception {
-        // Mock influxDB ingestion call
-        when(this.influxDBHelperMock.ingestToInfluxDb(anyString(), anyString(), anyString(), anyString()))
-                .thenThrow(new Exception("test_whenIngestToInfluxDBThrowsException_globalExceptionHandlerCatches"));
-
-        for(int i = 0; i < 1; i++) {
-            sender.send(
-                    MockMetricHelper.getValidMetric(i, "hybrid:1667601", true),
-                    UNIFIED_METRICS_TOPIC);
-        }
-
-        Thread.sleep(10*1000L); // wait for a few sec for consumer to process some records
-
-        // Batch processed count will still be more than 0 because exception thrown doesn't
-        // mean that batch is not processed
-        long batchProcessed = rawListener.getBatchProcessedCount();
-        Assert.assertTrue(batchProcessed > 0);
-    }
+//    @Test
+//    public void test_whenIngestToInfluxDBThrowsException_globalExceptionHandlerCatches() throws Exception {
+//        // Mock influxDB ingestion call
+//        when(this.influxDBHelperMock.ingestToInfluxDb(anyString(), anyString(), anyString(), anyString()))
+//                .thenThrow(new Exception("test_whenIngestToInfluxDBThrowsException_globalExceptionHandlerCatches"));
+//
+//        for(int i = 0; i < 1; i++) {
+//            sender.send(
+//                    MockMetricHelper.getValidMetric(i, "hybrid:1667601", true),
+//                    UNIFIED_METRICS_TOPIC);
+//        }
+//
+//        Thread.sleep(10*1000L); // wait for a few sec for consumer to process some records
+//
+//        // Batch processed count will still be more than 0 because exception thrown doesn't
+//        // mean that batch is not processed
+//        long batchProcessed = rawListener.getBatchProcessedCount();
+//        Assert.assertTrue(batchProcessed > 0);
+//    }
 }

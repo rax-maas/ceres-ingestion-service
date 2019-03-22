@@ -1,6 +1,7 @@
 package com.rackspacecloud.metrics.ingestionservice.listeners.processors;
 
 import com.rackspace.monplat.protocol.ExternalMetric;
+import com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
@@ -30,6 +31,14 @@ public class CommonMetricsProcessor {
         return dimension;
     }
 
+    /**
+     * Create TenantId and measurement values from passed parameters
+     * @param accountType
+     * @param account
+     * @param monitoringSystem
+     * @param collectionName
+     * @return
+     */
     public static TenantIdAndMeasurement getTenantIdAndMeasurement(
             String accountType, String account, String monitoringSystem, String collectionName) {
 
@@ -39,8 +48,10 @@ public class CommonMetricsProcessor {
         }
 
         if(!isValid(ACCOUNT, account)) {
-            LOGGER.error("Invalid account [{}] in the received record", account);
-            throw new IllegalArgumentException(String.format("Invalid account: [%s]", account));
+            String oldName = account;
+            account = InfluxDBUtils.replaceSpecialCharacters(account);
+
+            LOGGER.warn("Changed account from [{}] to [{}]", oldName, account);
         }
 
         String tenantId = String.format("%s-%s", accountType, account);
@@ -51,8 +62,10 @@ public class CommonMetricsProcessor {
         }
 
         if(!isValid(COLLECTION_NAME, collectionName)) {
-            LOGGER.error("Invalid collection name [{}] in the received record", collectionName);
-            throw new IllegalArgumentException(String.format("Invalid collection name: [%s]", collectionName));
+            String oldCollectionName = collectionName;
+            collectionName = InfluxDBUtils.replaceSpecialCharacters(collectionName);
+
+            LOGGER.warn("Changed collectionName from [{}] to [{}]", oldCollectionName, collectionName);
         }
 
         String measurement = String.format("%s_%s", monitoringSystem, collectionName);
@@ -60,6 +73,12 @@ public class CommonMetricsProcessor {
         return new TenantIdAndMeasurement(tenantId, measurement);
     }
 
+    /**
+     *  Field value should not contain any whitespace
+     * @param fieldName
+     * @param fieldValue
+     * @return
+     */
     public static boolean isValid(String fieldName, CharSequence fieldValue) {
         if (!StringUtils.containsWhitespace(fieldValue)) return true;
 

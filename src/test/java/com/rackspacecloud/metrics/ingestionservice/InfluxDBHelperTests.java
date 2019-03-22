@@ -133,8 +133,7 @@ public class InfluxDBHelperTests {
                     }
                 });
 
-        Assert.assertTrue("Ingest to influxDB failed in test.",
-                influxDBHelper.ingestToInfluxDb(payloadToIngestInInfluxDB, tenantId, measurement, rollupLevel));
+        influxDBHelper.ingestToInfluxDb(payloadToIngestInInfluxDB, tenantId, measurement, rollupLevel);
     }
 
     private TenantRoutes getTenantRoutes(String tenantId, String databaseName, String rpName) {

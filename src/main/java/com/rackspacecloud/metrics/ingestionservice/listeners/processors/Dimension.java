@@ -1,7 +1,7 @@
 package com.rackspacecloud.metrics.ingestionservice.listeners.processors;
 
-import com.rackspacecloud.metrics.ingestionservice.influxdb.Point;
 import lombok.Data;
+import org.influxdb.dto.Point;
 import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
@@ -58,33 +58,37 @@ public class Dimension {
         pointBuilder.tag(ACCOUNT, dimension.getAccount().trim());
 
         if(!StringUtils.isEmpty(dimension.getDevice())) {
-            pointBuilder.tag(DEVICE, dimension.getDevice().trim());
+            pointBuilder.tag(DEVICE, wrapTagValues(dimension.getDevice().trim()));
         }
 
         if(!StringUtils.isEmpty(dimension.getDevice())) {
-            pointBuilder.tag(DEVICE_LABEL, dimension.getDeviceLabel().trim());
+            pointBuilder.tag(DEVICE_LABEL, wrapTagValues(dimension.getDeviceLabel().trim()));
         }
 
         Map<String, String> deviceMetadata = dimension.getDeviceMetadata();
-        if(deviceMetadata != null) deviceMetadata.forEach((k, v) -> pointBuilder.tag(k, v));
+        if(deviceMetadata != null) deviceMetadata.forEach((k, v) -> pointBuilder.tag(k, wrapTagValues(v)));
 
         // Monitoring system is a mandatory field as this is part of measurement name
-        pointBuilder.tag(MONITORING_SYSTEM, dimension.getMonitoringSystem().trim());
+        pointBuilder.tag(MONITORING_SYSTEM, wrapTagValues(dimension.getMonitoringSystem().trim()));
 
         Map<String, String> systemMetadata = dimension.getSystemMetadata();
-        if(systemMetadata != null) systemMetadata.forEach((k, v) -> pointBuilder.tag(k, v));
+        if(systemMetadata != null) systemMetadata.forEach((k, v) -> pointBuilder.tag(k, wrapTagValues(v)));
 
         // Collection name is a mandatory field as this is part of measurement name
-        pointBuilder.tag(COLLECTION_NAME, dimension.getCollectionName().trim());
+        pointBuilder.tag(COLLECTION_NAME, wrapTagValues(dimension.getCollectionName().trim()));
 
         if(!StringUtils.isEmpty(dimension.getCollectionLabel())) {
-            pointBuilder.tag(COLLECTION_LABEL, dimension.getCollectionLabel().trim());
+            pointBuilder.tag(COLLECTION_LABEL, wrapTagValues(dimension.getCollectionLabel().trim()));
         }
 
         if(!StringUtils.isEmpty(dimension.getCollectionTarget())) {
-            pointBuilder.tag(COLLECTION_TARGET, dimension.getCollectionTarget().trim());
+            pointBuilder.tag(COLLECTION_TARGET, wrapTagValues(dimension.getCollectionTarget().trim()));
         }
 
         return pointBuilder;
+    }
+
+    private static String wrapTagValues(String tagValue) {
+        return "\"" + tagValue + "\"";
     }
 }

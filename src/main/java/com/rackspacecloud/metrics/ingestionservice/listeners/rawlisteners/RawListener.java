@@ -15,7 +15,6 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.web.client.ResourceAccessException;
 
 import java.util.List;
 import java.util.Map;
@@ -43,7 +42,7 @@ public class RawListener extends UnifiedMetricsListener {
             containerFactory = "batchFactory",
             errorHandler = "listenerErrorHandler"
     )
-    public boolean listenUnifiedMetricsTopic(
+    public void listenUnifiedMetricsTopic(
             @Payload final List<ExternalMetric> records,
             @Header(KafkaHeaders.RECEIVED_PARTITION_ID) final int partitionId,
             @Header(KafkaHeaders.OFFSET) final long offset,
@@ -51,17 +50,16 @@ public class RawListener extends UnifiedMetricsListener {
 
         batchProcessedCount++;
 
+        // Prepare the payloads to ingest
         Map<TenantIdAndMeasurement, List<String>> tenantPayloadsMap =
                 RawMetricsProcessor.getTenantPayloadsMap(partitionId, offset, records);
 
-        boolean isInfluxDbIngestionSuccessful = writeIntoInfluxDb(tenantPayloadsMap);
+        writeIntoInfluxDb(tenantPayloadsMap);
 
-        return processPostInfluxDbIngestion(records.toString(),
-                partitionId, offset, ack, isInfluxDbIngestionSuccessful);
+        processPostInfluxDbIngestion(records.toString(), partitionId, offset, ack);
     }
 
-    private boolean writeIntoInfluxDb(Map<TenantIdAndMeasurement, List<String>> tenantPayloadsMap) throws Exception {
-        boolean isInfluxDbIngestionSuccessful = false;
+    private void writeIntoInfluxDb(Map<TenantIdAndMeasurement, List<String>> tenantPayloadsMap) {
 
         for(Map.Entry<TenantIdAndMeasurement, List<String>> entry : tenantPayloadsMap.entrySet()) {
             TenantIdAndMeasurement tenantIdAndMeasurement = entry.getKey();
@@ -69,26 +67,17 @@ public class RawListener extends UnifiedMetricsListener {
             try {
                 // cleanup tenantIdAndMeasurement by replacing any special character
                 // with "_" before passing it to the function
-                isInfluxDbIngestionSuccessful = influxDBHelper.ingestToInfluxDb(
+                influxDBHelper.ingestToInfluxDb(
                         payload, tenantIdAndMeasurement.getTenantId(),
                         tenantIdAndMeasurement.getMeasurement(), "full");
                 // TODO: make enum for rollup level
 
             } catch (Exception e) {
                 String msg = String.format("Write to InfluxDB failed with exception message [%s].", e.getMessage());
+                LOGGER.error("[{}] Payload [{}]", msg, payload, e);
 
-                if(e.getCause().getClass().equals(ResourceAccessException.class)){
-                    LOGGER.error(msg, e);
-                }
-                else {
-                    LOGGER.error("[{}] Payload [{}]", msg, payload, e);
-                }
-
-                throw new Exception(msg, e);
+//                throw new Exception(msg, e);
             }
-
-            if(!isInfluxDbIngestionSuccessful) break;
         }
-        return isInfluxDbIngestionSuccessful;
     }
 }
