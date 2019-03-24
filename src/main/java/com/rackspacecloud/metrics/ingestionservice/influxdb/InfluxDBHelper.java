@@ -2,6 +2,8 @@ package com.rackspacecloud.metrics.ingestionservice.influxdb;
 
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.RouteProvider;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.TenantRoutes;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.influxdb.BatchOptions;
@@ -38,19 +40,23 @@ public class InfluxDBHelper {
     private RestTemplate restTemplate;
     private RouteProvider routeProvider;
     HashMap<String, InfluxDB> urlInfluxDBInstanceMap;
+    Timer influxDBWriteTimer;
 
-
-//    private static final String INFLUXDB_INGEST_URL_FORMAT = "%s/write?db=%s&rp=%s&precision=s";
-//    private static final int MAX_TRY_FOR_INGEST = 5;
+    // This timer captures the latency for getting data from routing service if it's trying
+    // to get the data first time. Once it has the routing information from routing service,
+    // it caches it.
+    Timer getInfluxDBInfoTimer;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InfluxDBHelper.class);
 
     @Autowired
-    public InfluxDBHelper(RestTemplate restTemplate, RouteProvider routeProvider){
+    public InfluxDBHelper(RestTemplate restTemplate, RouteProvider routeProvider, MeterRegistry registry){
         this.restTemplate = restTemplate;
         this.routeProvider = routeProvider;
         this.influxDbInfoMap = new HashMap<>();
-        urlInfluxDBInstanceMap = new HashMap<>();
+        this.urlInfluxDBInstanceMap = new HashMap<>();
+        this.influxDBWriteTimer = registry.timer("ingestion.influxdb.write");
+        this.getInfluxDBInfoTimer = registry.timer("ingestion.routing.info.get");
     }
 
     @Data
@@ -275,8 +281,14 @@ public class InfluxDBHelper {
 
     public void ingestToInfluxDb(
             String payload, String tenantId, String measurement, String rollupLevel) throws Exception {
+
+        long startTimeGetInfluxDBInfo = System.currentTimeMillis();
+
         // Get db and URL info to route data to
         Map<String, InfluxDbInfoForRollupLevel> influxDbInfoForTenant = getInfluxDbInfo(tenantId, measurement);
+
+        getInfluxDBInfoTimer.record(System.currentTimeMillis() - startTimeGetInfluxDBInfo, TimeUnit.MILLISECONDS);
+
         InfluxDbInfoForRollupLevel influxDbInfoForRollupLevel = influxDbInfoForTenant.get(rollupLevel);
 
         if(influxDbInfoForRollupLevel == null) return;
@@ -288,6 +300,7 @@ public class InfluxDBHelper {
 
         InfluxDB influxDB = getInfluxDBClient(baseUrl);
 
+        long startTime = System.currentTimeMillis();
         try {
             influxDB.write(databaseName, retPolicyName, InfluxDB.ConsistencyLevel.ONE, TimeUnit.SECONDS, payload);
         }
@@ -296,5 +309,7 @@ public class InfluxDBHelper {
                     baseUrl, databaseName, retPolicyName);
             throw ex;
         }
+
+        influxDBWriteTimer.record(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS);
     }
 }

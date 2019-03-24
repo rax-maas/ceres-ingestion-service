@@ -4,6 +4,7 @@ import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.DevTestTenantRouteProvider;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.ProdTenantRouteProvider;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.RouteProvider;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -81,7 +82,10 @@ public class InfluxDBHelperConfiguration {
 
     @Bean
     @Autowired
-    public InfluxDBHelper influxDBHelper(RestTemplate restTemplate, RouteProvider routeProvider) {
-        return new InfluxDBHelper(restTemplate, routeProvider);
+    public InfluxDBHelper influxDBHelper(
+            RestTemplate restTemplate,
+            RouteProvider routeProvider,
+            MeterRegistry registry) {
+        return new InfluxDBHelper(restTemplate, routeProvider, registry);
     }
 }

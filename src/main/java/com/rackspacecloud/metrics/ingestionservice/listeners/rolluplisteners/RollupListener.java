@@ -5,7 +5,6 @@ import com.rackspacecloud.metrics.ingestionservice.listeners.UnifiedMetricsListe
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.TenantIdAndMeasurement;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.models.MetricRollup;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.processors.MetricsRollupProcessor;
-import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,8 +19,6 @@ import org.springframework.web.client.ResourceAccessException;
 import java.util.List;
 import java.util.Map;
 
-import static com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBUtils.replaceSpecialCharacters;
-
 public class RollupListener extends UnifiedMetricsListener {
     private InfluxDBHelper influxDBHelper;
 
@@ -31,8 +28,7 @@ public class RollupListener extends UnifiedMetricsListener {
     protected static String tenantRoutingServiceUrl;
 
     @Autowired
-    public RollupListener(InfluxDBHelper influxDBHelper, MeterRegistry registry) {
-        super(registry);
+    public RollupListener(InfluxDBHelper influxDBHelper) {
         this.influxDBHelper = influxDBHelper;
     }
 

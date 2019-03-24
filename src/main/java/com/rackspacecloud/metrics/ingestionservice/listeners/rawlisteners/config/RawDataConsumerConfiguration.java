@@ -105,6 +105,8 @@ public class RawDataConsumerConfiguration {
 
     @Bean
     MeterRegistryCustomizer<MeterRegistry> metricsCommonTags() {
-        return registry -> registry.config().commonTags("consumer.group", properties.getConsumer().getGroup());
+        return registry -> registry.config().commonTags(
+                "service", "ingestion-service",
+                "consumer.group", properties.getConsumer().getGroup());
     }
 }

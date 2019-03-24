@@ -6,6 +6,8 @@ import com.rackspacecloud.metrics.ingestionservice.listeners.UnifiedMetricsListe
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.TenantIdAndMeasurement;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.processors.RawMetricsProcessor;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tag;
+import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,11 +18,20 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class RawListener extends UnifiedMetricsListener {
     private InfluxDBHelper influxDBHelper;
+    private MeterRegistry registry;
+    private Timer batchProcessingTimer;
+
+    private AtomicInteger gaugeRecordsCount;
+
+    private Tag rawListenerTag;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RawListener.class);
 
@@ -29,8 +40,11 @@ public class RawListener extends UnifiedMetricsListener {
 
     @Autowired
     public RawListener(InfluxDBHelper influxDBHelper, MeterRegistry registry) {
-        super(registry);
+        this.rawListenerTag = Tag.of("listener", "raw");
+        this.batchProcessingTimer = registry.timer("ingestion.batch.processing", Arrays.asList(rawListenerTag));
+        this.registry = registry;
         this.influxDBHelper = influxDBHelper;
+        this.gaugeRecordsCount = new AtomicInteger(0);
     }
 
     /**
@@ -48,6 +62,10 @@ public class RawListener extends UnifiedMetricsListener {
             @Header(KafkaHeaders.OFFSET) final long offset,
             final Acknowledgment ack) throws Exception {
 
+        registry.gauge("ingestion.records.count", Arrays.asList(rawListenerTag), gaugeRecordsCount);
+        gaugeRecordsCount.set(records.size());
+
+        long batchProcessingStartTime = System.currentTimeMillis();
         batchProcessedCount++;
 
         // Prepare the payloads to ingest
@@ -57,6 +75,8 @@ public class RawListener extends UnifiedMetricsListener {
         writeIntoInfluxDb(tenantPayloadsMap);
 
         processPostInfluxDbIngestion(records.toString(), partitionId, offset, ack);
+
+        batchProcessingTimer.record(System.currentTimeMillis() - batchProcessingStartTime, TimeUnit.MILLISECONDS);
     }
 
     private void writeIntoInfluxDb(Map<TenantIdAndMeasurement, List<String>> tenantPayloadsMap) {

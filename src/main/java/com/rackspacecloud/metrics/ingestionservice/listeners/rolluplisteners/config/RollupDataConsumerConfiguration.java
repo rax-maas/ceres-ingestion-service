@@ -81,7 +81,7 @@ public class RollupDataConsumerConfiguration {
 
     @Bean
     @Autowired
-    public RollupListener rollupListener(InfluxDBHelper influxDBHelper, MeterRegistry registry){
-        return new RollupListener(influxDBHelper, registry);
+    public RollupListener rollupListener(InfluxDBHelper influxDBHelper){
+        return new RollupListener(influxDBHelper);
     }
 }

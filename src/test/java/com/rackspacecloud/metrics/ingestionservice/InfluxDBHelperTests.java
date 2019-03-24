@@ -41,7 +41,7 @@ public class InfluxDBHelperTests {
     public void ingestToInfluxDb_withExistingDatabaseAndRetPolicy_shouldSucceed() throws Exception {
         RestTemplate restTemplateMock = mock(RestTemplate.class);
         RouteProvider routeProviderMock = mock(RouteProvider.class);
-        InfluxDBHelper influxDBHelper = new InfluxDBHelper(restTemplateMock, routeProviderMock);
+        InfluxDBHelper influxDBHelper = new InfluxDBHelper(restTemplateMock, routeProviderMock, null);
         String tenantId = "hybrid:1667601";
         String measurement = "cpu";
         String databaseName = "existing_db";
@@ -60,7 +60,7 @@ public class InfluxDBHelperTests {
     public void ingestToInfluxDb_withNonExistingDatabase_shouldCreateDatabase() throws Exception {
         RestTemplate restTemplateMock = mock(RestTemplate.class);
         RouteProvider routeProviderMock = mock(RouteProvider.class);
-        InfluxDBHelper influxDBHelper = new InfluxDBHelper(restTemplateMock, routeProviderMock);
+        InfluxDBHelper influxDBHelper = new InfluxDBHelper(restTemplateMock, routeProviderMock, null);
         String tenantId = "hybrid:1667601";
         String measurement = "cpu";
         String databaseName = "existing_db";
@@ -77,7 +77,7 @@ public class InfluxDBHelperTests {
             throws Exception {
         RestTemplate restTemplateMock = mock(RestTemplate.class);
         RouteProvider routeProviderMock = mock(RouteProvider.class);
-        InfluxDBHelper influxDBHelper = new InfluxDBHelper(restTemplateMock, routeProviderMock);
+        InfluxDBHelper influxDBHelper = new InfluxDBHelper(restTemplateMock, routeProviderMock, null);
         String tenantId = "hybrid:1667601";
         String measurement = "cpu";
         String databaseName = "existing_db";

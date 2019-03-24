@@ -1,11 +1,8 @@
 package com.rackspacecloud.metrics.ingestionservice.listeners;
 
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.support.Acknowledgment;
 
@@ -16,7 +13,7 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
 
     protected long batchProcessedCount = 0;
 
-    protected Counter counter;
+//    protected Counter counter;
 
 
     // At the end of every 1000 messages, log this information
@@ -24,10 +21,10 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UnifiedMetricsListener.class);
 
-    @Autowired
-    public UnifiedMetricsListener(MeterRegistry registry) {
-        this.counter = registry.counter("batch.processed");
-    }
+//    @Autowired
+//    public UnifiedMetricsListener(MeterRegistry registry) {
+////        this.counter = registry.counter("batch.processed");
+//    }
 
     @Override
     public void registerSeekCallback(ConsumerSeekCallback consumerSeekCallback) {
