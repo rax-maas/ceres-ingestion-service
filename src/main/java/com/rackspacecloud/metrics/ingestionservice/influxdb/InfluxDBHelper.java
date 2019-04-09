@@ -2,16 +2,19 @@ package com.rackspacecloud.metrics.ingestionservice.influxdb;
 
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.RouteProvider;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.TenantRoutes;
+import com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBUtils;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import okhttp3.OkHttpClient;
 import org.influxdb.BatchOptions;
 import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBException;
 import org.influxdb.InfluxDBFactory;
 import org.influxdb.dto.Query;
 import org.influxdb.dto.QueryResult;
+import org.influxdb.impl.InfluxDBImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +42,9 @@ public class InfluxDBHelper {
     private Map<String, Map<String, InfluxDbInfoForRollupLevel>> influxDbInfoMap;
     private RestTemplate restTemplate;
     private RouteProvider routeProvider;
+    private InfluxDBUtils influxDBUtils;
+    private int numberOfPointsInAWriteBatch;
+    private int writeFlushDurationMsLimit;
     HashMap<String, InfluxDB> urlInfluxDBInstanceMap;
     Timer influxDBWriteTimer;
 
@@ -49,12 +55,18 @@ public class InfluxDBHelper {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InfluxDBHelper.class);
 
-    @Autowired
-    public InfluxDBHelper(RestTemplate restTemplate, RouteProvider routeProvider, MeterRegistry registry){
+    public InfluxDBHelper(
+            RestTemplate restTemplate, RouteProvider routeProvider, MeterRegistry registry,
+            InfluxDBUtils influxDBUtils,
+            int numberOfPointsInAWriteBatch, int writeFlushDurationMsLimit){
         this.restTemplate = restTemplate;
         this.routeProvider = routeProvider;
+        this.influxDBUtils = influxDBUtils;
         this.influxDbInfoMap = new HashMap<>();
         this.urlInfluxDBInstanceMap = new HashMap<>();
+        this.numberOfPointsInAWriteBatch = numberOfPointsInAWriteBatch;
+        this.writeFlushDurationMsLimit = writeFlushDurationMsLimit;
+
         this.influxDBWriteTimer = registry.timer("ingestion.influxdb.write");
         this.getInfluxDBInfoTimer = registry.timer("ingestion.routing.info.get");
     }
@@ -171,7 +183,7 @@ public class InfluxDBHelper {
         }
         catch(Exception e) {
             String errMsg = String.format(
-                    "Failed to get routes for tenantId and measurement [%s]", tenantId, measurement);
+                    "Failed to get routes for tenantId [%s] and measurement [%s]", tenantId, measurement);
             LOGGER.error(errMsg, e);
             throw new Exception(errMsg, e);
         }
@@ -246,7 +258,7 @@ public class InfluxDBHelper {
         InfluxDB influxDB = getInfluxDBClient(baseUrl);
 
         QueryResult result = influxDB.query(new Query(queryString, ""));
-        return result.hasError();
+        return !result.hasError();
     }
 
     /**
@@ -256,10 +268,17 @@ public class InfluxDBHelper {
      */
     private InfluxDB getInfluxDBClient(String instanceUrl) {
         InfluxDB influxDB = this.urlInfluxDBInstanceMap.get(instanceUrl);
+
+        BatchOptions batchOptions = BatchOptions.DEFAULTS;
+        batchOptions.actions(this.numberOfPointsInAWriteBatch);
+        batchOptions.flushDuration(this.writeFlushDurationMsLimit);
+//        batchOptions.bufferLimit(2000);
+
         if(influxDB == null) {
-            influxDB = InfluxDBFactory.connect(instanceUrl);
+            influxDB = this.influxDBUtils.getInfluxDB(instanceUrl);
             influxDB.setLogLevel(InfluxDB.LogLevel.BASIC);
-            influxDB.enableBatch(BatchOptions.DEFAULTS);
+//            influxDB.enableBatch(BatchOptions.DEFAULTS);
+            influxDB.enableBatch(batchOptions);
             this.urlInfluxDBInstanceMap.put(instanceUrl, influxDB);
         }
 
@@ -276,7 +295,7 @@ public class InfluxDBHelper {
         InfluxDB influxDB = getInfluxDBClient(baseUrl);
         QueryResult result = influxDB.query(new Query(queryString, databaseName));
 
-        return result.hasError();
+        return !result.hasError();
     }
 
     public void ingestToInfluxDb(

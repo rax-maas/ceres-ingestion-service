@@ -14,6 +14,10 @@ public class ConsumerConfigurationProperties {
     private List<String> servers;
     private long listenerContainerIdleInterval;
     private int sessionTimeoutMsConfig;
+    private int maxPollRecordsConfig;
+    private String fetchMinBytesConfig;
+    private int fetchMaxWaitMsConfig;
+    private String maxPartitionFetchBytesConfig;
     private Properties properties;
     private Ssl ssl;
     private Consumer consumer;

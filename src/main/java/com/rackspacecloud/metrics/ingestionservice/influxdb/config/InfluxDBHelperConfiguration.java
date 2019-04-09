@@ -4,6 +4,7 @@ import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.DevTestTenantRouteProvider;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.ProdTenantRouteProvider;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.RouteProvider;
+import com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBUtils;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.RequestConfig;
@@ -11,6 +12,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,6 +27,12 @@ import java.util.Collections;
 @Configuration
 @EnableConfigurationProperties(RestTemplateConfigurationProperties.class)
 public class InfluxDBHelperConfiguration {
+    @Value("${influxdb.number-of-points-in-a-write-batch}")
+    private int numberOfPointsInAWriteBatch;
+
+    @Value("${influxdb.write-flush-duration-ms-limit}")
+    private int writeFlushDurationMsLimit;
+
     @Autowired
     RestTemplateConfigurationProperties config;
 
@@ -81,11 +89,23 @@ public class InfluxDBHelperConfiguration {
     }
 
     @Bean
+    public InfluxDBUtils influxDBUtils() {
+        return new InfluxDBUtils();
+    }
+
+    @Bean
     @Autowired
     public InfluxDBHelper influxDBHelper(
             RestTemplate restTemplate,
             RouteProvider routeProvider,
-            MeterRegistry registry) {
-        return new InfluxDBHelper(restTemplate, routeProvider, registry);
+            MeterRegistry registry,
+            InfluxDBUtils influxDBUtils) {
+        return new InfluxDBHelper(
+                restTemplate,
+                routeProvider,
+                registry,
+                influxDBUtils,
+                numberOfPointsInAWriteBatch,
+                writeFlushDurationMsLimit);
     }
 }

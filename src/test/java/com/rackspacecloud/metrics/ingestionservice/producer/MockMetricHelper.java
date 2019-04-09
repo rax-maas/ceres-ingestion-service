@@ -11,24 +11,28 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class MockMetricHelper {
 
-    public static ExternalMetric getValidMetric(int i, String tenantId, boolean wantIValues){
+    public static ExternalMetric getValidMetric(
+            int i, String accountType, String account,
+            int randomNum, boolean wantIValues){
+
         ExternalMetric metric = new ExternalMetric();
 
-        metric.setAccount("1234567");
-        metric.setAccountType(AccountType.CORE);
-        metric.setDevice((1000 + i) + "");
-        metric.setDeviceLabel("dummy-device-label-" + i);
+        metric.setAccount(account);
+        metric.setAccountType(Enum.valueOf(AccountType.class, accountType));
+
+        metric.setDevice((randomNum + i) + "");
+        metric.setDeviceLabel("dummy-device-label-" + randomNum + "-" + i);
         metric.setDeviceMetadata(new HashMap<>());
         metric.setMonitoringSystem(MonitoringSystem.MAAS);
 
         Map<String, String> systemMetadata = new HashMap<>();
-        systemMetadata.put("checkType", "agent.filesystem");
-        systemMetadata.put("tenantId", tenantId);
-        systemMetadata.put("accountId", "dummy-account-id-" + i);
-        systemMetadata.put("entityId", "dummy-entity-id-" + i);
-        systemMetadata.put("checkId", "dummy-check-id-" + i);
+        systemMetadata.put("accountId", "dummy-account-id-" + randomNum + "-" + i);
+        systemMetadata.put("entityId", "dummy-entity-id-" + randomNum + "-" + i);
+        systemMetadata.put("checkId", "dummy-check-id-" + randomNum + "-" + i);
         systemMetadata.put("monitoringZone", "");
         metric.setSystemMetadata(systemMetadata);
+
+        metric.setCollectionName("agent.filesystem" + "." + i);
 
         metric.setCollectionLabel("dummy-collection-label");
         metric.setCollectionTarget("");

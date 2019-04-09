@@ -24,7 +24,7 @@ public class TenantRoutes {
         private String retentionPolicy;
 
         public TenantRoute(String path, String databaseName, String retentionPolicyName,
-                           String retentionPolicy, int maxSeriesCount){
+                           String retentionPolicy){
             this.path = path;
             this.databaseName = databaseName;
             this.retentionPolicyName = retentionPolicyName;

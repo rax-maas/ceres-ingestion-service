@@ -58,13 +58,6 @@ public class CommonConsumerConfiguration {
     }
 
     @Bean
-    public MeterFilter metricsFilter() {
-        String denyString = "jvm";
-        LOGGER.info("Filtering out string [{}]", denyString);
-        return MeterFilter.denyNameStartsWith(denyString);
-    }
-
-    @Bean
     @Autowired
     public TimedAspect timedAspect(MeterRegistry registry) {
         return new TimedAspect(registry);

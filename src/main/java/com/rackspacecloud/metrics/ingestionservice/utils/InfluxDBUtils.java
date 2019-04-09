@@ -1,5 +1,8 @@
 package com.rackspacecloud.metrics.ingestionservice.utils;
 
+import org.influxdb.InfluxDB;
+import org.influxdb.InfluxDBFactory;
+
 public class InfluxDBUtils {
 
     public static String replaceSpecialCharacters(String inputString){
@@ -11,5 +14,9 @@ public class InfluxDBUtils {
             }
         }
         return inputString;
+    }
+
+    public InfluxDB getInfluxDB(String url) {
+        return InfluxDBFactory.connect(url);
     }
 }

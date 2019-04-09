@@ -21,6 +21,11 @@ kafka:
   servers: ${spring.embedded.kafka.brokers}
   listener-container-idle-interval: 10000
   session-timeout-ms-config: 15000
+  max-poll-records-config: 1500
+  fetch-min-bytes-config: 8388608
+  fetch-max-wait-ms-config: 10
+  max-partition-fetch-bytes-config: 8388608
+
 
   topics:
     in: unified.metrics.json
@@ -32,6 +37,13 @@ kafka:
 
   consumer:
       group: influxdb-consumer-group-test
+
+tenant-routing-service:
+  url: http://localhost:8081
+
+influxdb:
+  number-of-points-in-a-write-batch: 3000
+  write-flush-duration-ms-limit: 100
 
 ---
 spring:
@@ -50,6 +62,10 @@ kafka:
   servers: ${TEST_KAFKA_BOOTSTRAP_SERVERS}
   listener-container-idle-interval: ${LISTENER_CONTAINER_IDLE_INTERVAL}
   session-timeout-ms-config: ${SESSION_TIMEOUT_MS_CONFIG}
+  max-poll-records-config: ${MAX_POLL_RECORDS_CONFIG}
+  fetch-min-bytes-config: ${FETCH_MIN_BYTES_CONFIG}
+  fetch-max-wait-ms-config: ${FETCH_MAX_WAIT_MS_CONFIG}
+  max-partition-fetch-bytes-config: ${MAX_PARTITION_FETCH_BYTES_CONFIG}
 
   ssl:
     truststore-location: ${TRUSTSTORE_LOCATION}
@@ -74,6 +90,11 @@ kafka:
 tenant-routing-service:
   url: http://localhost:8081
 
+influxdb:
+  number-of-points-in-a-write-batch: 3000
+  write-flush-duration-ms-limit: 100
+
+
 logging:
   level:
     com.rackspacecloud: info
@@ -90,6 +111,7 @@ management:
   metrics:
     tags:
       stack: "dev"
+      service: "ingestion-service"
     export:
       influx:
         db: ceres
@@ -121,6 +143,10 @@ kafka:
   servers: ${KAFKA_BOOTSTRAP_SERVERS}
   listener-container-idle-interval: ${LISTENER_CONTAINER_IDLE_INTERVAL}
   session-timeout-ms-config: ${SESSION_TIMEOUT_MS_CONFIG}
+  max-poll-records-config: ${MAX_POLL_RECORDS_CONFIG}
+  fetch-min-bytes-config: ${FETCH_MIN_BYTES_CONFIG}
+  fetch-max-wait-ms-config: ${FETCH_MAX_WAIT_MS_CONFIG}
+  max-partition-fetch-bytes-config: ${MAX_PARTITION_FETCH_BYTES_CONFIG}
 
   ssl:
     truststore-location: ${TRUSTSTORE_LOCATION}
@@ -145,6 +171,10 @@ kafka:
 tenant-routing-service:
   url: ${TENANT_ROUTING_SERVICE_URL}
 
+influxdb:
+  number-of-points-in-a-write-batch: ${NUMBER_OF_POINTS_IN_A_WRITE_BATCH}
+  write-flush-duration-ms-limit: ${WRITE_FLUSH_DURATION_MS_LIMIT}
+
 logging:
   level:
     com.rackspacecloud: info
@@ -164,6 +194,7 @@ management:
   metrics:
     tags:
       stack: "prod"
+      service: "ingestion-service"
     export:
       statsd:
         flavor: ${statsd.flavor:telegraf}
@@ -178,4 +209,4 @@ management:
         project-id: ceres-dev-222017
         enabled: true
         batch-size: 150
-        num-threads: 10
+#        num-threads: 10
