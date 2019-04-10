@@ -40,10 +40,10 @@ public class RawMetricsProcessor {
             Dimension dimension = CommonMetricsProcessor.getDimensions(record);
 
             try {
-                String accountType = dimension.getAccountType(); //record.getAccountType().name();
-                String account = dimension.getAccount(); //record.getAccount();
-                String monitoringSystem = dimension.getMonitoringSystem(); //record.getMonitoringSystem().name();
-                String collectionName = dimension.getCollectionName(); //record.getCollectionName();
+                String accountType = dimension.getAccountType();
+                String account = dimension.getAccount();
+                String monitoringSystem = dimension.getMonitoringSystem();
+                String collectionName = dimension.getCollectionName();
 
                 TenantIdAndMeasurement tenantIdAndMeasurement =
                         CommonMetricsProcessor.getTenantIdAndMeasurement(

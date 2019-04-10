@@ -13,18 +13,10 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
 
     protected long batchProcessedCount = 0;
 
-//    protected Counter counter;
-
-
     // At the end of every 1000 messages, log this information
     protected static final int MESSAGE_PROCESS_REPORT_COUNT = 1000;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UnifiedMetricsListener.class);
-
-//    @Autowired
-//    public UnifiedMetricsListener(MeterRegistry registry) {
-////        this.counter = registry.counter("batch.processed");
-//    }
 
     @Override
     public void registerSeekCallback(ConsumerSeekCallback consumerSeekCallback) {
@@ -41,15 +33,6 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
         if (batchProcessedCount % MESSAGE_PROCESS_REPORT_COUNT == 0) {
             LOGGER.info("Processed {} batches.", batchProcessedCount);
         }
-
-//        if (isInfluxdbIngestionSuccessful) {
-//
-//        } else {
-//            LOGGER.error("FAILED at {}: partitionId:{}, offset:{}, processing a batch of given records [{}]",
-//                    Instant.now(), partitionId, offset, recordsString);
-//            // TODO: retry? OR write messages into some 'maas_metrics_error' topic, so that later on
-//            // we can read it from that error topic
-//        }
 
         LOGGER.debug("Done processing for records:{}", recordsString);
 
