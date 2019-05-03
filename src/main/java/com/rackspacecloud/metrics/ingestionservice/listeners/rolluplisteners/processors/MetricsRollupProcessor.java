@@ -1,5 +1,6 @@
 package com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.processors;
 
+import com.rackspacecloud.metrics.ingestionservice.listeners.UnifiedMetricsListener;
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.CommonMetricsProcessor;
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.Dimension;
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.TenantIdAndMeasurement;
@@ -13,8 +14,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-
-import static com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBUtils.replaceSpecialCharacters;
 
 /**
  * This class processes MetricsRollup (JSON) message from Kafka into InfluxDB formatted line-protocol string
@@ -96,7 +95,7 @@ public class MetricsRollupProcessor {
         pointBuilder.addField("end", record.getEnd());
 
         for(Map.Entry<String, MetricRollup.RollupBucket<Long>> entry : record.getIvalues().entrySet()){
-            String metricFieldName = replaceSpecialCharacters(entry.getKey());
+            String metricFieldName = UnifiedMetricsListener.replaceSpecialCharacters(entry.getKey());
             pointBuilder.tag(String.format("%s_unit", metricFieldName), record.getUnits().get(entry.getKey()));
 
             MetricRollup.RollupBucket<Long> rollupBucketLong = entry.getValue();
@@ -114,7 +113,7 @@ public class MetricsRollupProcessor {
         }
 
         for(Map.Entry<String, MetricRollup.RollupBucket<Double>> entry : record.getFvalues().entrySet()){
-            String metricFieldName = replaceSpecialCharacters(entry.getKey());
+            String metricFieldName = UnifiedMetricsListener.replaceSpecialCharacters(entry.getKey());
             pointBuilder.tag(String.format("%s_unit", metricFieldName), record.getUnits().get(entry.getKey()));
 
             MetricRollup.RollupBucket<Double> rollupBucketDouble = entry.getValue();

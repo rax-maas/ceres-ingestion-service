@@ -41,8 +41,10 @@ public class RawListener extends UnifiedMetricsListener {
     @Autowired
     public RawListener(InfluxDBHelper influxDBHelper, MeterRegistry registry) {
         this.rawListenerTag = Tag.of("listener", "raw");
-        this.batchProcessingTimer = registry.timer("ingestion.batch.processing", Arrays.asList(rawListenerTag));
         this.registry = registry;
+        this.batchProcessingTimer =
+                this.registry.timer("ingestion.batch.processing", Arrays.asList(rawListenerTag));
+        this.registry.gauge("ingestion.records.count", Arrays.asList(rawListenerTag), gaugeRecordsCount);
         this.influxDBHelper = influxDBHelper;
         this.gaugeRecordsCount = new AtomicInteger(0);
     }
@@ -62,7 +64,6 @@ public class RawListener extends UnifiedMetricsListener {
             @Header(KafkaHeaders.OFFSET) final long offset,
             final Acknowledgment ack) throws Exception {
 
-        registry.gauge("ingestion.records.count", Arrays.asList(rawListenerTag), gaugeRecordsCount);
         gaugeRecordsCount.set(records.size());
 
         long batchProcessingStartTime = System.currentTimeMillis();
@@ -74,7 +75,7 @@ public class RawListener extends UnifiedMetricsListener {
 
         writeIntoInfluxDb(tenantPayloadsMap);
 
-        processPostInfluxDbIngestion(records.toString(), partitionId, offset, ack);
+        processPostInfluxDbIngestion(records, partitionId, offset, ack);
 
         batchProcessingTimer.record(System.currentTimeMillis() - batchProcessingStartTime, TimeUnit.MILLISECONDS);
     }

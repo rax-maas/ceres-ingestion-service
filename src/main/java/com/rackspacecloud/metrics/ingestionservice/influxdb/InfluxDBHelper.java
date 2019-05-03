@@ -2,28 +2,26 @@ package com.rackspacecloud.metrics.ingestionservice.influxdb;
 
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.RouteProvider;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.TenantRoutes;
-import com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBUtils;
+import com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBFactory;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import okhttp3.OkHttpClient;
 import org.influxdb.BatchOptions;
 import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBException;
-import org.influxdb.InfluxDBFactory;
 import org.influxdb.dto.Query;
 import org.influxdb.dto.QueryResult;
-import org.influxdb.impl.InfluxDBImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
 public class InfluxDBHelper {
@@ -39,13 +37,13 @@ public class InfluxDBHelper {
      *              retentionPolicyName = "rp_5d"
      *              retentionPolicy = "5d"
      */
-    private Map<String, Map<String, InfluxDbInfoForRollupLevel>> influxDbInfoMap;
+    private ConcurrentMap<String, Map<String, InfluxDbInfoForRollupLevel>> influxDbInfoMap;
     private RestTemplate restTemplate;
     private RouteProvider routeProvider;
-    private InfluxDBUtils influxDBUtils;
+    private InfluxDBFactory influxDBFactory;
     private int numberOfPointsInAWriteBatch;
     private int writeFlushDurationMsLimit;
-    HashMap<String, InfluxDB> urlInfluxDBInstanceMap;
+    private ConcurrentMap<String, InfluxDB> urlInfluxDBInstanceMap;
     Timer influxDBWriteTimer;
 
     // This timer captures the latency for getting data from routing service if it's trying
@@ -57,13 +55,13 @@ public class InfluxDBHelper {
 
     public InfluxDBHelper(
             RestTemplate restTemplate, RouteProvider routeProvider, MeterRegistry registry,
-            InfluxDBUtils influxDBUtils,
+            InfluxDBFactory influxDBFactory,
             int numberOfPointsInAWriteBatch, int writeFlushDurationMsLimit){
         this.restTemplate = restTemplate;
         this.routeProvider = routeProvider;
-        this.influxDBUtils = influxDBUtils;
-        this.influxDbInfoMap = new HashMap<>();
-        this.urlInfluxDBInstanceMap = new HashMap<>();
+        this.influxDBFactory = influxDBFactory;
+        this.influxDbInfoMap = new ConcurrentHashMap<>();
+        this.urlInfluxDBInstanceMap = new ConcurrentHashMap<>();
         this.numberOfPointsInAWriteBatch = numberOfPointsInAWriteBatch;
         this.writeFlushDurationMsLimit = writeFlushDurationMsLimit;
 
@@ -269,18 +267,16 @@ public class InfluxDBHelper {
     private InfluxDB getInfluxDBClient(String instanceUrl) {
         InfluxDB influxDB = this.urlInfluxDBInstanceMap.get(instanceUrl);
 
+        if (influxDB != null) return influxDB;
+
         BatchOptions batchOptions = BatchOptions.DEFAULTS;
         batchOptions.actions(this.numberOfPointsInAWriteBatch);
         batchOptions.flushDuration(this.writeFlushDurationMsLimit);
-//        batchOptions.bufferLimit(2000);
 
-        if(influxDB == null) {
-            influxDB = this.influxDBUtils.getInfluxDB(instanceUrl);
-            influxDB.setLogLevel(InfluxDB.LogLevel.BASIC);
-//            influxDB.enableBatch(BatchOptions.DEFAULTS);
-            influxDB.enableBatch(batchOptions);
-            this.urlInfluxDBInstanceMap.put(instanceUrl, influxDB);
-        }
+        influxDB = this.influxDBFactory.getInfluxDB(instanceUrl);
+        influxDB.setLogLevel(InfluxDB.LogLevel.BASIC);
+        influxDB.enableBatch(batchOptions);
+        this.urlInfluxDBInstanceMap.put(instanceUrl, influxDB);
 
         return influxDB;
     }

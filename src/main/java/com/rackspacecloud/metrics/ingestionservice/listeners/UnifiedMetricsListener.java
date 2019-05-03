@@ -7,6 +7,7 @@ import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.support.Acknowledgment;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 public class UnifiedMetricsListener implements ConsumerSeekAware {
@@ -24,7 +25,7 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
     }
 
     protected void processPostInfluxDbIngestion(
-            final String recordsString, final int partitionId,
+            final List<?> records, final int partitionId,
             final long offset, final Acknowledgment ack) {
 
         ack.acknowledge();
@@ -34,7 +35,7 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
             LOGGER.info("Processed {} batches.", batchProcessedCount);
         }
 
-        LOGGER.debug("Done processing for records:{}", recordsString);
+        LOGGER.debug("Done processing for records:{}", records);
 
         // Reset the counter
         if(batchProcessedCount == Long.MAX_VALUE) batchProcessedCount = 0;
@@ -66,5 +67,17 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
      */
     public long getBatchProcessedCount(){
         return batchProcessedCount;
+    }
+
+    public static String replaceSpecialCharacters(String inputString){
+        final String[] metaCharacters =
+                {"\\",":","^","$","{","}","[","]","(",")",".","*","+","?","|","<",">","-","&","%"," "};
+
+        for (int i = 0 ; i < metaCharacters.length ; i++){
+            if(inputString.contains(metaCharacters[i])){
+                inputString = inputString.replace(metaCharacters[i],"_");
+            }
+        }
+        return inputString;
     }
 }

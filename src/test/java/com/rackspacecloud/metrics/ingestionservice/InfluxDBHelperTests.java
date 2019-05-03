@@ -3,7 +3,7 @@ package com.rackspacecloud.metrics.ingestionservice;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.RouteProvider;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.TenantRoutes;
-import com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBUtils;
+import com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBFactory;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import org.influxdb.InfluxDB;
@@ -12,6 +12,7 @@ import org.influxdb.dto.QueryResult;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mockito;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.annotation.DirtiesContext;
@@ -38,7 +39,7 @@ public class InfluxDBHelperTests {
     RestTemplate restTemplateMock;
     RouteProvider routeProviderMock;
     MeterRegistry meterRegistry;
-    InfluxDBUtils influxDBUtilsMock;
+    InfluxDBFactory influxDBUtilsMock;
     Timer influxDBWriteTimer;
     Timer getInfluxDBInfoTimer;
 
@@ -47,7 +48,7 @@ public class InfluxDBHelperTests {
         restTemplateMock = mock(RestTemplate.class);
         routeProviderMock = mock(RouteProvider.class);
         meterRegistry = mock(MeterRegistry.class);
-        influxDBUtilsMock = mock(InfluxDBUtils.class);
+        influxDBUtilsMock = mock(InfluxDBFactory.class);
         influxDBWriteTimer = mock(Timer.class);
         getInfluxDBInfoTimer = mock(Timer.class);
         when(meterRegistry.timer("ingestion.influxdb.write")).thenReturn(influxDBWriteTimer);
@@ -115,7 +116,7 @@ public class InfluxDBHelperTests {
     }
 
     private void successfulIngestionTest(
-            InfluxDBHelper influxDBHelper, RestTemplate restTemplateMock, InfluxDBUtils influxDBUtilsMock,
+            InfluxDBHelper influxDBHelper, RestTemplate restTemplateMock, InfluxDBFactory influxDBUtilsMock,
             String tenantId, String measurement, String databaseName, String rpName,
             Timer influxDBWriteTimer, Timer getInfluxDBInfoTimer) throws Exception {
 
@@ -151,6 +152,9 @@ public class InfluxDBHelperTests {
         doNothing().when(influxDBMock).write(anyString(), anyString(), any(), any(), anyString());
 
         influxDBHelper.ingestToInfluxDb(payloadToIngestInInfluxDB, tenantId, measurement, rollupLevel);
+
+        verify(influxDBMock, Mockito.times(1))
+                .write(anyString(), anyString(), any(), any(), anyString());
     }
 
     private TenantRoutes getTenantRoutes(String tenantId, String databaseName, String rpName) {

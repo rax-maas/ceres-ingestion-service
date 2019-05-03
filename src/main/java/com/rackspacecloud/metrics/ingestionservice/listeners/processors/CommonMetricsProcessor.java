@@ -1,7 +1,7 @@
 package com.rackspacecloud.metrics.ingestionservice.listeners.processors;
 
 import com.rackspace.monplat.protocol.ExternalMetric;
-import com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBUtils;
+import com.rackspacecloud.metrics.ingestionservice.listeners.UnifiedMetricsListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
@@ -49,7 +49,7 @@ public class CommonMetricsProcessor {
 
         if(!isValid(ACCOUNT, account)) {
             String oldName = account;
-            account = InfluxDBUtils.replaceSpecialCharacters(account);
+            account = UnifiedMetricsListener.replaceSpecialCharacters(account);
 
             LOGGER.warn("Changed account from [{}] to [{}]", oldName, account);
         }
@@ -63,7 +63,7 @@ public class CommonMetricsProcessor {
 
         if(!isValid(COLLECTION_NAME, collectionName)) {
             String oldCollectionName = collectionName;
-            collectionName = InfluxDBUtils.replaceSpecialCharacters(collectionName);
+            collectionName = UnifiedMetricsListener.replaceSpecialCharacters(collectionName);
 
             LOGGER.warn("Changed collectionName from [{}] to [{}]", oldCollectionName, collectionName);
         }

@@ -4,7 +4,7 @@ import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.DevTestTenantRouteProvider;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.ProdTenantRouteProvider;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.RouteProvider;
-import com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBUtils;
+import com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBFactory;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.RequestConfig;
@@ -89,8 +89,8 @@ public class InfluxDBHelperConfiguration {
     }
 
     @Bean
-    public InfluxDBUtils influxDBUtils() {
-        return new InfluxDBUtils();
+    public InfluxDBFactory influxDBFactory() {
+        return new InfluxDBFactory();
     }
 
     @Bean
@@ -99,12 +99,12 @@ public class InfluxDBHelperConfiguration {
             RestTemplate restTemplate,
             RouteProvider routeProvider,
             MeterRegistry registry,
-            InfluxDBUtils influxDBUtils) {
+            InfluxDBFactory influxDBFactory) {
         return new InfluxDBHelper(
                 restTemplate,
                 routeProvider,
                 registry,
-                influxDBUtils,
+                influxDBFactory,
                 numberOfPointsInAWriteBatch,
                 writeFlushDurationMsLimit);
     }

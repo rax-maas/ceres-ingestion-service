@@ -1,6 +1,7 @@
 package com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.processors;
 
 import com.rackspace.monplat.protocol.ExternalMetric;
+import com.rackspacecloud.metrics.ingestionservice.listeners.UnifiedMetricsListener;
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.CommonMetricsProcessor;
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.Dimension;
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.TenantIdAndMeasurement;
@@ -14,8 +15,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-
-import static com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBUtils.replaceSpecialCharacters;
 
 public class RawMetricsProcessor {
 
@@ -80,7 +79,7 @@ public class RawMetricsProcessor {
     static void populatePayload(final ExternalMetric record, final Point.Builder pointBuilder) {
         for(Map.Entry<String, Long> entry : record.getIvalues().entrySet()){
             String iKey = entry.getKey();
-            String metricFieldName = replaceSpecialCharacters(iKey);
+            String metricFieldName = UnifiedMetricsListener.replaceSpecialCharacters(iKey);
             String unitValue = record.getUnits().get(iKey);
 
             pointBuilder.tag(String.format("%s_unit", metricFieldName), unitValue == null ? UNAVAILABLE : unitValue);
@@ -89,7 +88,7 @@ public class RawMetricsProcessor {
 
         for(Map.Entry<String, Double> entry : record.getFvalues().entrySet()){
             String fKey = entry.getKey();
-            String metricFieldName = replaceSpecialCharacters(fKey);
+            String metricFieldName = UnifiedMetricsListener.replaceSpecialCharacters(fKey);
             String unitValue = record.getUnits().get(fKey);
 
             pointBuilder.tag(String.format("%s_unit", metricFieldName), unitValue == null ? UNAVAILABLE : unitValue);

@@ -119,7 +119,7 @@ management:
         auto-create-db: true
       stackdriver:
         project-id: ceres-dev-222017
-        enabled: true
+        enabled: false
 
 ---
 spring:
@@ -207,6 +207,6 @@ management:
         auto-create-db: true
       stackdriver:
         project-id: ceres-dev-222017
-        enabled: true
-        batch-size: 150
+        enabled: ${STACKDRIVER_ENABLED}
+        batch-size: ${STACKDRIVER_BATCH_SIZE}
 #        num-threads: 10
