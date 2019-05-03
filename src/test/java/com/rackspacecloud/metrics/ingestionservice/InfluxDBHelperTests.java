@@ -135,7 +135,8 @@ public class InfluxDBHelperTests {
 
         InfluxDB influxDBMock = mock(InfluxDB.class);
 
-        when(influxDBUtilsMock.getInfluxDB("http://valid_url:8086")).thenReturn(influxDBMock);
+        when(influxDBUtilsMock.getInfluxDB("http://valid_url:8086",
+                100, 100)).thenReturn(influxDBMock);
 
         when(influxDBMock.query(new Query(dbQueryString, "")))
                 .thenReturn(getQueryResultForExistingDatabase());
