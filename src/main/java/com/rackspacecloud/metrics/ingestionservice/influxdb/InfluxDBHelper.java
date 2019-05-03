@@ -265,20 +265,17 @@ public class InfluxDBHelper {
      * @return
      */
     private InfluxDB getInfluxDBClient(String instanceUrl) {
-        InfluxDB influxDB = this.urlInfluxDBInstanceMap.get(instanceUrl);
+        return this.urlInfluxDBInstanceMap.computeIfAbsent(instanceUrl, key -> {
+            BatchOptions batchOptions = BatchOptions.DEFAULTS;
+            batchOptions.actions(this.numberOfPointsInAWriteBatch);
+            batchOptions.flushDuration(this.writeFlushDurationMsLimit);
 
-        if (influxDB != null) return influxDB;
+            InfluxDB influxDB = this.influxDBFactory.getInfluxDB(instanceUrl);
+            influxDB.setLogLevel(InfluxDB.LogLevel.BASIC);
+            influxDB.enableBatch(batchOptions);
 
-        BatchOptions batchOptions = BatchOptions.DEFAULTS;
-        batchOptions.actions(this.numberOfPointsInAWriteBatch);
-        batchOptions.flushDuration(this.writeFlushDurationMsLimit);
-
-        influxDB = this.influxDBFactory.getInfluxDB(instanceUrl);
-        influxDB.setLogLevel(InfluxDB.LogLevel.BASIC);
-        influxDB.enableBatch(batchOptions);
-        this.urlInfluxDBInstanceMap.put(instanceUrl, influxDB);
-
-        return influxDB;
+            return influxDB;
+        });
     }
 
     private boolean createRetentionPolicy(final String databaseName, final String baseUrl,

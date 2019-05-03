@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -71,7 +72,7 @@ public class InfluxDBHelperTests {
         System.out.println(String.format("Testing with tenantIdAndMeasurement:[%s]; databaseName:[%s]; rpName:[%s]",
                 tenantId, databaseName, rpName));
 
-        successfulIngestionTest(influxDBHelper, restTemplateMock,
+        successfulIngestionTest(influxDBHelper,
                 influxDBUtilsMock, tenantId, measurement, databaseName, rpName,
                 influxDBWriteTimer, getInfluxDBInfoTimer);
     }
@@ -89,7 +90,7 @@ public class InfluxDBHelperTests {
         doReturn(getTenantRoutes(tenantId, databaseName, rpName))
                 .when(routeProviderMock).getRoute(tenantId, measurement, restTemplateMock);
 
-        successfulIngestionTest(influxDBHelper, restTemplateMock, influxDBUtilsMock,
+        successfulIngestionTest(influxDBHelper, influxDBUtilsMock,
                 tenantId, measurement, databaseName, rpName, influxDBWriteTimer, getInfluxDBInfoTimer);
     }
 
@@ -103,20 +104,21 @@ public class InfluxDBHelperTests {
         String measurement = "cpu";
         String databaseName = "existing_db";
         String rpName = "existing_rp";
+        String nonExistingRetentionPolicyName = "non_existing_rp";
 
         /**
          * Here rpName is different from what routeProvider will provide. Goal is that these two values should
          * be different, so that it's creating a scenario where retention policy does not exist for a given database.
          */
-        doReturn(getTenantRoutes(tenantId, databaseName, "non_existing_rp"))
+        doReturn(getTenantRoutes(tenantId, databaseName, nonExistingRetentionPolicyName))
                 .when(routeProviderMock).getRoute(tenantId, measurement, restTemplateMock);
 
-        successfulIngestionTest(influxDBHelper, restTemplateMock, influxDBUtilsMock,
-                tenantId, measurement, databaseName, rpName, influxDBWriteTimer, getInfluxDBInfoTimer);
+        successfulIngestionTest(influxDBHelper, influxDBUtilsMock, tenantId, measurement, databaseName,
+                nonExistingRetentionPolicyName, influxDBWriteTimer, getInfluxDBInfoTimer);
     }
 
     private void successfulIngestionTest(
-            InfluxDBHelper influxDBHelper, RestTemplate restTemplateMock, InfluxDBFactory influxDBUtilsMock,
+            InfluxDBHelper influxDBHelper, InfluxDBFactory influxDBUtilsMock,
             String tenantId, String measurement, String databaseName, String rpName,
             Timer influxDBWriteTimer, Timer getInfluxDBInfoTimer) throws Exception {
 
@@ -153,8 +155,8 @@ public class InfluxDBHelperTests {
 
         influxDBHelper.ingestToInfluxDb(payloadToIngestInInfluxDB, tenantId, measurement, rollupLevel);
 
-        verify(influxDBMock, Mockito.times(1))
-                .write(anyString(), anyString(), any(), any(), anyString());
+        verify(influxDBMock, Mockito.times(1)).write(
+                databaseName, rpName, InfluxDB.ConsistencyLevel.ONE, TimeUnit.SECONDS, payloadToIngestInInfluxDB);
     }
 
     private TenantRoutes getTenantRoutes(String tenantId, String databaseName, String rpName) {
