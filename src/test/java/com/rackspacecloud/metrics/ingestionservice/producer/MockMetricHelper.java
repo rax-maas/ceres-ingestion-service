@@ -1,8 +1,8 @@
 package com.rackspacecloud.metrics.ingestionservice.producer;
 
-import com.rackspace.maas.model.AccountType;
-import com.rackspace.maas.model.Metric;
-import com.rackspace.maas.model.MonitoringSystem;
+import com.rackspace.monplat.protocol.AccountType;
+import com.rackspace.monplat.protocol.ExternalMetric;
+import com.rackspace.monplat.protocol.MonitoringSystem;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -11,24 +11,28 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class MockMetricHelper {
 
-    public static Metric getValidMetric(int i, String tenantId, boolean wantIValues){
-        Metric metric = new Metric();
+    public static ExternalMetric getValidMetric(
+            int i, String accountType, String account,
+            int randomNum, boolean wantIValues){
 
-        metric.setAccount("1234567");
-        metric.setAccountType(AccountType.CORE);
-        metric.setDevice((1000 + i) + "");
-        metric.setDeviceLabel("dummy-device-label-" + i);
+        ExternalMetric metric = new ExternalMetric();
+
+        metric.setAccount(account);
+        metric.setAccountType(Enum.valueOf(AccountType.class, accountType));
+
+        metric.setDevice((randomNum + i) + "");
+        metric.setDeviceLabel("dummy-device-label-" + randomNum + "-" + i);
         metric.setDeviceMetadata(new HashMap<>());
         metric.setMonitoringSystem(MonitoringSystem.MAAS);
 
         Map<String, String> systemMetadata = new HashMap<>();
-        systemMetadata.put("checkType", "agent.filesystem");
-        systemMetadata.put("tenantId", tenantId);
-        systemMetadata.put("accountId", "dummy-account-id-" + i);
-        systemMetadata.put("entityId", "dummy-entity-id-" + i);
-        systemMetadata.put("checkId", "dummy-check-id-" + i);
+        systemMetadata.put("accountId", "dummy-account-id-" + randomNum + "-" + i);
+        systemMetadata.put("entityId", "dummy-entity-id-" + randomNum + "-" + i);
+        systemMetadata.put("checkId", "dummy-check-id-" + randomNum + "-" + i);
         systemMetadata.put("monitoringZone", "");
         metric.setSystemMetadata(systemMetadata);
+
+        metric.setCollectionName("agent.filesystem" + "." + i);
 
         metric.setCollectionLabel("dummy-collection-label");
         metric.setCollectionTarget("");

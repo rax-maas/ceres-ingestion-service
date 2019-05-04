@@ -1,38 +1,72 @@
 package com.rackspacecloud.metrics.ingestionservice.influxdb;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.RouteProvider;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.TenantRoutes;
+import com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBFactory;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import org.influxdb.BatchOptions;
+import org.influxdb.InfluxDB;
+import org.influxdb.InfluxDBException;
+import org.influxdb.dto.Query;
+import org.influxdb.dto.QueryResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.*;
 import org.springframework.web.client.RestTemplate;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 
 public class InfluxDBHelper {
-    private Map<String, Map<String, InfluxDbInfoForRollupLevel>> influxDbInfoMap;
+    /**
+     * This map contains all of the InfluxDB related information for given tenantId and measurement
+     * key = tenantId:measurement. Example: "CORE-123456:MAAS_agent_filesystem"
+     * value = Map of rollupLevel and their path information
+     *      Example:
+     *          key = rollupLevel. Example: 60m
+     *          value = Path info. Example:
+     *              path = "http://data-influxdb-1:8086"
+     *              databaseName = "db_6"
+     *              retentionPolicyName = "rp_5d"
+     *              retentionPolicy = "5d"
+     */
+    private ConcurrentMap<String, Map<String, InfluxDbInfoForRollupLevel>> influxDbInfoMap;
     private RestTemplate restTemplate;
     private RouteProvider routeProvider;
+    private InfluxDBFactory influxDBFactory;
+    private int numberOfPointsInAWriteBatch;
+    private int writeFlushDurationMsLimit;
+    private ConcurrentMap<String, InfluxDB> urlInfluxDBInstanceMap;
+    Timer influxDBWriteTimer;
 
-
-    private static final String INFLUXDB_INGEST_URL_FORMAT = "%s/write?db=%s&rp=%s&precision=s";
-    private static final int MAX_TRY_FOR_INGEST = 5;
+    // This timer captures the latency for getting data from routing service if it's trying
+    // to get the data first time. Once it has the routing information from routing service,
+    // it caches it.
+    Timer getInfluxDBInfoTimer;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InfluxDBHelper.class);
 
-    @Autowired
-    public InfluxDBHelper(RestTemplate restTemplate, RouteProvider routeProvider){
+    public InfluxDBHelper(
+            RestTemplate restTemplate, RouteProvider routeProvider, MeterRegistry registry,
+            InfluxDBFactory influxDBFactory,
+            int numberOfPointsInAWriteBatch, int writeFlushDurationMsLimit){
         this.restTemplate = restTemplate;
         this.routeProvider = routeProvider;
-        this.influxDbInfoMap = new HashMap<>();
+        this.influxDBFactory = influxDBFactory;
+        this.influxDbInfoMap = new ConcurrentHashMap<>();
+        this.urlInfluxDBInstanceMap = new ConcurrentHashMap<>();
+        this.numberOfPointsInAWriteBatch = numberOfPointsInAWriteBatch;
+        this.writeFlushDurationMsLimit = writeFlushDurationMsLimit;
+
+        this.influxDBWriteTimer = registry.timer("ingestion.influxdb.write");
+        this.getInfluxDBInfoTimer = registry.timer("ingestion.routing.info.get");
     }
 
     @Data
@@ -44,13 +78,38 @@ public class InfluxDBHelper {
         private String retentionPolicy;
     }
 
-    private Map<String, InfluxDbInfoForRollupLevel> getInfluxDbInfo(final String tenantId) throws Exception {
-        if(influxDbInfoMap.containsKey(tenantId)) return influxDbInfoMap.get(tenantId);
+    /**
+     * Get Map of rollupLevel and their path information
+     *      Example:
+     *          key = rollupLevel. Example: 60m
+     *          value = Path info. Example:
+     *              path = "http://data-influxdb-1:8086"
+     *              databaseName = "db_6"
+     *              retentionPolicyName = "rp_5d"
+     *              retentionPolicy = "5d"
+     * @param tenantId
+     * @param measurement
+     * @return
+     * @throws Exception
+     */
+    private Map<String, InfluxDbInfoForRollupLevel> getInfluxDbInfo(
+            final String tenantId, final String measurement) throws Exception {
 
-        TenantRoutes tenantRoutes = getTenantRoutes(tenantId);
+        String tenantIdAndMeasurementKey = String.format("%s:%s", tenantId, measurement);
+
+        // If we already have routing information from earlier calls, we don't need to call
+        // routing service to get the same information again
+        if(influxDbInfoMap.containsKey(tenantIdAndMeasurementKey))
+            return influxDbInfoMap.get(tenantIdAndMeasurementKey);
+
+        // Get tenant routes (each rollup level and their corresponding path, dbname, ret-policy info)
+        // from routing service
+        TenantRoutes tenantRoutes = getTenantRoutes(tenantId, measurement);
 
         Map<String, InfluxDbInfoForRollupLevel> influxDbInfoForTenant = new HashMap<>();
 
+        // Since request for this tenantId and measurement came first time, we need to make sure
+        // all of databases and retention policies are created if they don't exist already
         for(Map.Entry<String, TenantRoutes.TenantRoute> entry : tenantRoutes.getRoutes().entrySet()) {
             String rollupLevel = entry.getKey();
             TenantRoutes.TenantRoute route = entry.getValue();
@@ -62,7 +121,7 @@ public class InfluxDBHelper {
             if(databaseExists(databaseName, path)) {
                 // Check if retention policy exist
                 if(retentionPolicyExists(retPolicyName, databaseName, path)) {
-                    LOGGER.info("Database {} and retention policy {} already exist", databaseName, retPolicyName);
+                    LOGGER.debug("Database {} and retention policy {} already exist", databaseName, retPolicyName);
                     influxDbInfoForTenant.put(rollupLevel, new InfluxDbInfoForRollupLevel(
                             path, databaseName, retPolicyName, retPolicy
                     ));
@@ -72,40 +131,57 @@ public class InfluxDBHelper {
                     if(rollupLevel.equalsIgnoreCase("full")) isDefault = true;
 
                     if(createRetentionPolicy(databaseName, path, retPolicy, retPolicyName, isDefault)) {
+                        LOGGER.info("Created new retention policy named [{}] for database [{}] in instance [{}]",
+                                retPolicyName, databaseName, path);
+
                         influxDbInfoForTenant.put(rollupLevel, new InfluxDbInfoForRollupLevel(
                                 path, databaseName, retPolicyName, retPolicy
                         ));
                     }
                     else {
-                        LOGGER.error("Failed to create retention policy {} on database {}",
-                                retPolicyName, databaseName);
+                        LOGGER.error("Failed to create retention policy {} on database {} in instance [{}]",
+                                retPolicyName, databaseName, path);
                     }
                 }
             }
             else {
-                // InfluxDB create database API always returns 200 (http status code) for new or existing database
                 // TODO: store already processed database so that we don't call createDatabase blindly
                 if(createDatabase(databaseName, path, retPolicy, retPolicyName)) {
+                    LOGGER.info("Created new database [{}] with retention policy name [{}] on instance [{}]",
+                            databaseName, retPolicyName, path);
+
                     influxDbInfoForTenant.put(rollupLevel, new InfluxDbInfoForRollupLevel(
                             path, databaseName, retPolicyName, retPolicy
                     ));
                 }
+                else {
+                    LOGGER.error("Failed to create database [{}] with retention policy name [{}] on instance [{}]",
+                            databaseName, retPolicyName, path);
+                }
             }
         }
 
-        influxDbInfoMap.put(tenantId, influxDbInfoForTenant);
+        influxDbInfoMap.put(tenantIdAndMeasurementKey, influxDbInfoForTenant);
 
         return influxDbInfoForTenant;
     }
 
-    private TenantRoutes getTenantRoutes(String tenantId) throws Exception {
+    /**
+     * Get tenant routes for given tenantId and measurement from routing service
+     * @param tenantId
+     * @param measurement
+     * @return
+     * @throws Exception
+     */
+    private TenantRoutes getTenantRoutes(String tenantId, String measurement) throws Exception {
         TenantRoutes tenantRoutes;
 
         try {
-            tenantRoutes = routeProvider.getRoute(tenantId, restTemplate);
+            tenantRoutes = routeProvider.getRoute(tenantId, measurement, restTemplate);
         }
         catch(Exception e) {
-            String errMsg = String.format("Failed to get routes for tenantId [%s]", tenantId);
+            String errMsg = String.format(
+                    "Failed to get routes for tenantId [%s] and measurement [%s]", tenantId, measurement);
             LOGGER.error(errMsg, e);
             throw new Exception(errMsg, e);
         }
@@ -115,86 +191,58 @@ public class InfluxDBHelper {
     }
 
     private boolean databaseExists(final String databaseName, final String baseUrl) {
-        String queryString = "q=SHOW DATABASES";
-        ResponseEntity<String> response = getResponseEntity(baseUrl, queryString);
+        String queryString = "SHOW DATABASES";
 
-        try {
-            if (response == null || response.getStatusCode() != HttpStatus.OK) {
-                LOGGER.error("Response is null or Http Status code is not 'OK'");
-                return false;
-            }
-            ObjectMapper mapper = new ObjectMapper();
-            ShowDatabaseResult result = mapper.readValue(response.getBody(), ShowDatabaseResult.class);
+        InfluxDB influxDB = getInfluxDBClient(baseUrl);
+        QueryResult queryResult = influxDB.query(new Query(queryString, ""));
 
-            if(result != null
-                    && result.results.length > 0
-                    && result.results[0].series.length > 0
-                    && result.results[0].series[0].values.length > 0
-                    )
-            {
-                List<String> databases = new ArrayList<>();
-                for(String[] strArray : result.results[0].series[0].getValues()) {
-                    for(String database : strArray){
-                        databases.add(database);
-                    }
+        if(queryResult.hasError()) {
+            LOGGER.error("Query result got error for query [{}]", queryString);
+            return false;
+        }
+
+        if(queryResult != null
+                && queryResult.getResults().size() > 0
+                && queryResult.getResults().get(0).getSeries().size() > 0
+                && queryResult.getResults().get(0).getSeries().get(0).getValues().size() > 0
+                )
+        {
+            List<String> databases = new ArrayList<>();
+            for(List<Object> strings : queryResult.getResults().get(0).getSeries().get(0).getValues()) {
+                for(Object database : strings){
+                    databases.add(database.toString());
                 }
-                if(databases.contains(databaseName)) return true;
             }
-        } catch (IOException e) {
-            LOGGER.error("databaseExists failed with stack trace: {}", e);
+            if(databases.contains(databaseName)) return true;
         }
 
         return false;
     }
 
-    private ResponseEntity<String> getResponseEntity(String baseUrl, String queryString) {
-        ResponseEntity<String> response = null;
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-
-        HttpEntity<String> entity = new HttpEntity<>(queryString, headers);
-
-        String url = String.format("%s/query", baseUrl);
-        try {
-            response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
-        }
-        catch(Exception ex){
-            LOGGER.error("restTemplate.exchange threw exception with message: {}", ex.getMessage());
-        }
-        return response;
-    }
-
     private boolean retentionPolicyExists(final String rp, final String databaseName, final String baseUrl) {
-        String queryString = String.format("q=SHOW RETENTION POLICIES ON \"%s\"", databaseName);
-        ResponseEntity<String> response = getResponseEntity(baseUrl, queryString);
+        String queryString = String.format("SHOW RETENTION POLICIES ON \"%s\"", databaseName);
 
-        try {
-            if (response == null || response.getStatusCode() != HttpStatus.OK) {
-                LOGGER.error("Response is null or Http Status code is not 'OK'");
-                return false;
-            }
+        InfluxDB influxDB = getInfluxDBClient(baseUrl);
 
-            ObjectMapper mapper = new ObjectMapper();
-            ShowRetentionPoliciesResult result =
-                    mapper.readValue(response.getBody(), ShowRetentionPoliciesResult.class);
+        QueryResult queryResult = influxDB.query(new Query(queryString, databaseName));
 
-            if(result != null
-                    && result.results.length > 0
-                    && result.results[0].series.length > 0
-                    && result.results[0].series[0].values.length > 0
-                    )
-            {
-                List<String> retPolicies = new ArrayList<>();
-                for(String[] strings : result.results[0].series[0].values) {
-                    retPolicies.add(strings[0]);
-                }
-
-                if(retPolicies.contains(rp)) return true;
-            }
+        if(queryResult.hasError()) {
+            LOGGER.error("Query result got error for query [{}]", queryString);
+            return false;
         }
-        catch(IOException ex){
-            LOGGER.error("Exception Message: {}; Failed with stack trace: {}", ex.getMessage(), ex);
+
+        if(queryResult != null
+                && queryResult.getResults().size() > 0
+                && queryResult.getResults().get(0).getSeries().size() > 0
+                && queryResult.getResults().get(0).getSeries().get(0).getValues().size() > 0
+                )
+        {
+            List<String> retPolicies = new ArrayList<>();
+            for(List<Object> strings : queryResult.getResults().get(0).getSeries().get(0).getValues()) {
+                retPolicies.add(strings.get(0).toString());
+            }
+
+            if(retPolicies.contains(rp)) return true;
         }
 
         return false;
@@ -202,103 +250,69 @@ public class InfluxDBHelper {
 
     private boolean createDatabase(final String databaseName, final String baseUrl,
                                    final String retPolicy, final String retPolicyName) {
-        String queryString = String.format("q=CREATE DATABASE \"%s\" WITH DURATION %s NAME \"%s\"",
+        String queryString = String.format("CREATE DATABASE \"%s\" WITH DURATION %s NAME \"%s\"",
                 databaseName, retPolicy, retPolicyName);
-        ResponseEntity<String> response = getResponseEntity(baseUrl, queryString);
 
-        if (responseCheck(response)) return true;
+        InfluxDB influxDB = getInfluxDBClient(baseUrl);
 
-        return false;
+        QueryResult result = influxDB.query(new Query(queryString, ""));
+        return !result.hasError();
+    }
+
+    /**
+     * Get InfluxDB client for given InfluxDB instance
+     * @param instanceUrl
+     * @return
+     */
+    private InfluxDB getInfluxDBClient(String instanceUrl) {
+        return this.urlInfluxDBInstanceMap.computeIfAbsent(instanceUrl, key -> this.influxDBFactory.getInfluxDB(
+                instanceUrl, this.numberOfPointsInAWriteBatch, this.writeFlushDurationMsLimit));
     }
 
     private boolean createRetentionPolicy(final String databaseName, final String baseUrl,
             final String retPolicy, final String retPolicyName, boolean isDefault) {
-        String queryString = String.format("q=CREATE RETENTION POLICY \"%s\" ON \"%s\" DURATION %s REPLICATION 1",
+        String queryString = String.format("CREATE RETENTION POLICY \"%s\" ON \"%s\" DURATION %s REPLICATION 1",
                 retPolicyName, databaseName, retPolicy);
 
         if(isDefault) queryString = queryString + " DEFAULT";
-        ResponseEntity<String> response = getResponseEntity(baseUrl, queryString);
 
-        if (responseCheck(response)) return true;
+        InfluxDB influxDB = getInfluxDBClient(baseUrl);
+        QueryResult result = influxDB.query(new Query(queryString, databaseName));
 
-        return false;
+        return !result.hasError();
     }
 
-    private boolean responseCheck(ResponseEntity<String> response) {
-        try {
-            if (response == null || response.getStatusCode() != HttpStatus.OK) {
-                LOGGER.error("Response is null or Http Status code is not 'OK'");
-            }
-            //TODO: why return true? Find out what status code we get when database creation fails or succeeds.
-            return true;
-        }
-        catch(Exception ex){
-            LOGGER.error("restTemplate.exchange threw exception with message: {}", ex.getMessage());
-        }
-        return false;
-    }
+    public void ingestToInfluxDb(
+            String payload, String tenantId, String measurement, String rollupLevel) throws Exception {
 
-    public boolean ingestToInfluxDb(String payload, String tenantId, String rollupLevel) throws Exception {
+        long startTimeGetInfluxDBInfo = System.currentTimeMillis();
+
         // Get db and URL info to route data to
-        Map<String, InfluxDbInfoForRollupLevel> influxDbInfoForTenant = getInfluxDbInfo(tenantId);
+        Map<String, InfluxDbInfoForRollupLevel> influxDbInfoForTenant = getInfluxDbInfo(tenantId, measurement);
+
+        getInfluxDBInfoTimer.record(System.currentTimeMillis() - startTimeGetInfluxDBInfo, TimeUnit.MILLISECONDS);
+
         InfluxDbInfoForRollupLevel influxDbInfoForRollupLevel = influxDbInfoForTenant.get(rollupLevel);
 
-        if(influxDbInfoForRollupLevel == null) return false;
+        if(influxDbInfoForRollupLevel == null) return;
 
         String baseUrl = influxDbInfoForRollupLevel.getPath();
         String databaseName = influxDbInfoForRollupLevel.getDatabaseName();
         String retPolicyName = influxDbInfoForRollupLevel.getRetentionPolicyName();
 
-        HttpHeaders headers = getHttpHeaders();
-        HttpEntity<String> request = new HttpEntity<>(payload, headers);
 
-        String url = String.format(INFLUXDB_INGEST_URL_FORMAT, baseUrl, databaseName, retPolicyName);
+        InfluxDB influxDB = getInfluxDBClient(baseUrl);
 
-        if (writeToInfluxDb(payload, request, url)) return true;
-
-        return false;
-    }
-
-    private boolean writeToInfluxDb(String payload, HttpEntity<String> request, String url) {
-        ResponseEntity<String> response = null;
-        int count = 0;
-
-        while(response == null && count < MAX_TRY_FOR_INGEST) {
-            try {
-                response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
-            }
-            catch (Exception ex) {
-                LOGGER.error("Using url [{}], Exception message: {}, trace: {}",
-                        url, ex.getMessage(), ex);
-            }
-
-            if(response != null) {
-                break;
-            }
-            else {
-                count++;
-            }
+        long startTime = System.currentTimeMillis();
+        try {
+            influxDB.write(databaseName, retPolicyName, InfluxDB.ConsistencyLevel.ONE, TimeUnit.SECONDS, payload);
+        }
+        catch(InfluxDBException.PointsBeyondRetentionPolicyException ex) {
+            LOGGER.error("Write failed for the payload. baseURL: [{}], databaseName: [{}], ret-policy: [{}]",
+                    baseUrl, databaseName, retPolicyName);
+            throw ex;
         }
 
-        if(response == null){
-            LOGGER.error("Using InfluxDB url [{}], got null in response for the payload -> {}", url, payload);
-        }
-        else if(response.getStatusCode() != HttpStatus.NO_CONTENT){
-            LOGGER.error("Using InfluxDB url [{}], couldn't ingest the payload -> {}", url, payload);
-        }
-        else{
-            return true;
-        }
-        return false;
-    }
-
-    private HttpHeaders getHttpHeaders() {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.TEXT_PLAIN);
-        List<MediaType> mediaTypes = new ArrayList<>();
-        mediaTypes.add(MediaType.TEXT_PLAIN);
-        headers.setAccept(mediaTypes);
-
-        return headers;
+        influxDBWriteTimer.record(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS);
     }
 }

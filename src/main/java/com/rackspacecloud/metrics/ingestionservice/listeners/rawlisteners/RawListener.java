@@ -1,10 +1,13 @@
 package com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners;
 
-import com.rackspace.maas.model.Metric;
+import com.rackspace.monplat.protocol.ExternalMetric;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.listeners.UnifiedMetricsListener;
+import com.rackspacecloud.metrics.ingestionservice.listeners.processors.TenantIdAndMeasurement;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.processors.RawMetricsProcessor;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tag;
+import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,15 +17,21 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.web.client.ResourceAccessException;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-
-import static com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBUtils.replaceSpecialCharacters;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class RawListener extends UnifiedMetricsListener {
     private InfluxDBHelper influxDBHelper;
+    private MeterRegistry registry;
+    private Timer batchProcessingTimer;
+
+    private AtomicInteger gaugeRecordsCount;
+
+    private Tag rawListenerTag;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RawListener.class);
 
@@ -31,8 +40,13 @@ public class RawListener extends UnifiedMetricsListener {
 
     @Autowired
     public RawListener(InfluxDBHelper influxDBHelper, MeterRegistry registry) {
-        super(registry);
+        this.rawListenerTag = Tag.of("listener", "raw");
+        this.registry = registry;
+        this.batchProcessingTimer =
+                this.registry.timer("ingestion.batch.processing", Arrays.asList(rawListenerTag));
+        this.registry.gauge("ingestion.records.count", Arrays.asList(rawListenerTag), gaugeRecordsCount);
         this.influxDBHelper = influxDBHelper;
+        this.gaugeRecordsCount = new AtomicInteger(0);
     }
 
     /**
@@ -44,50 +58,47 @@ public class RawListener extends UnifiedMetricsListener {
             containerFactory = "batchFactory",
             errorHandler = "listenerErrorHandler"
     )
-    public boolean listenUnifiedMetricsTopic(
-            @Payload final List<Metric> records,
+    public void listenUnifiedMetricsTopic(
+            @Payload final List<ExternalMetric> records,
             @Header(KafkaHeaders.RECEIVED_PARTITION_ID) final int partitionId,
             @Header(KafkaHeaders.OFFSET) final long offset,
             final Acknowledgment ack) throws Exception {
 
+        gaugeRecordsCount.set(records.size());
+
+        long batchProcessingStartTime = System.currentTimeMillis();
         batchProcessedCount++;
 
-        Map<String, List<String>> tenantPayloadsMap =
+        // Prepare the payloads to ingest
+        Map<TenantIdAndMeasurement, List<String>> tenantPayloadsMap =
                 RawMetricsProcessor.getTenantPayloadsMap(partitionId, offset, records);
 
-        boolean isInfluxDbIngestionSuccessful = writeIntoInfluxDb(tenantPayloadsMap);
+        writeIntoInfluxDb(tenantPayloadsMap);
 
-        return processPostInfluxDbIngestion(records.toString(),
-                partitionId, offset, ack, isInfluxDbIngestionSuccessful);
+        processPostInfluxDbIngestion(records, partitionId, offset, ack);
+
+        batchProcessingTimer.record(System.currentTimeMillis() - batchProcessingStartTime, TimeUnit.MILLISECONDS);
     }
 
-    private boolean writeIntoInfluxDb(Map<String, List<String>> tenantPayloadsMap) throws Exception {
-        boolean isInfluxDbIngestionSuccessful = false;
+    private void writeIntoInfluxDb(Map<TenantIdAndMeasurement, List<String>> tenantPayloadsMap) {
 
-        for(Map.Entry<String, List<String>> entry : tenantPayloadsMap.entrySet()) {
-            String tenantId = entry.getKey();
+        for(Map.Entry<TenantIdAndMeasurement, List<String>> entry : tenantPayloadsMap.entrySet()) {
+            TenantIdAndMeasurement tenantIdAndMeasurement = entry.getKey();
             String payload = String.join("\n", entry.getValue());
             try {
-                // cleanup tenantId by replacing any special character with "_" before passing it to the function
-                isInfluxDbIngestionSuccessful = influxDBHelper.ingestToInfluxDb(
-                        payload, replaceSpecialCharacters(tenantId), "full");
+                // cleanup tenantIdAndMeasurement by replacing any special character
+                // with "_" before passing it to the function
+                influxDBHelper.ingestToInfluxDb(
+                        payload, tenantIdAndMeasurement.getTenantId(),
+                        tenantIdAndMeasurement.getMeasurement(), "full");
                 // TODO: make enum for rollup level
 
             } catch (Exception e) {
                 String msg = String.format("Write to InfluxDB failed with exception message [%s].", e.getMessage());
+                LOGGER.error("[{}] Payload [{}]", msg, payload, e);
 
-                if(e.getCause().getClass().equals(ResourceAccessException.class)){
-                    LOGGER.error(msg, e);
-                }
-                else {
-                    LOGGER.error("[{}] Payload [{}]", msg, payload, e);
-                }
-
-                throw new Exception(msg, e);
+//                throw new Exception(msg, e);
             }
-
-            if(!isInfluxDbIngestionSuccessful) break;
         }
-        return isInfluxDbIngestionSuccessful;
     }
 }

@@ -31,8 +31,7 @@ public class AvroDeserializer<T extends SpecificRecordBase> implements Deseriali
     public T deserialize(String topicName, byte[] data) {
         if(data == null) return null;
 
-        String stringifiedData = new String(data);
-        LOGGER.debug("Data is [{}]", stringifiedData);
+        LOGGER.debug("Data is [{}]", new String(data));
 
         try {
             ByteArrayInputStream inputStream = new ByteArrayInputStream(data);
@@ -47,7 +46,7 @@ public class AvroDeserializer<T extends SpecificRecordBase> implements Deseriali
         } catch (Exception e) {
             String errorMessage = String.format("Deserialization failed for topic [%s] with exception message: [%s]",
                     topicName, e.getMessage());
-            LOGGER.error("{} Data in question is [{}]", errorMessage, stringifiedData);
+            LOGGER.error("{} Data in question is [{}]", errorMessage, new String(data));
             throw new SerializationException(errorMessage, e);
         }
     }

@@ -17,7 +17,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest
@@ -53,11 +54,12 @@ public class IngestionServiceApplicationTests {
 	@Test
     public void testSuccessfulRawDataConsumption() throws Exception {
         // Mock influxDB ingestion call
-        when(this.influxDBHelperMock.ingestToInfluxDb(anyString(), anyString(), anyString())).thenReturn(true);
+		doNothing().when(this.influxDBHelperMock).ingestToInfluxDb(anyString(), anyString(), anyString(), anyString());
 
 	    for(int i = 0; i < 1; i++) {
             sender.send(
-                    MockMetricHelper.getValidMetric(i, "hybrid:1667601", true),
+                    MockMetricHelper.getValidMetric(i, "CORE", "hybrid:1667601",
+                            13, true),
                     UNIFIED_METRICS_TOPIC);
         }
 
@@ -70,12 +72,13 @@ public class IngestionServiceApplicationTests {
     @Test
     public void test_whenIngestToInfluxDBThrowsException_globalExceptionHandlerCatches() throws Exception {
         // Mock influxDB ingestion call
-        when(this.influxDBHelperMock.ingestToInfluxDb(anyString(), anyString(), anyString()))
-                .thenThrow(new Exception("test_whenIngestToInfluxDBThrowsException_globalExceptionHandlerCatches"));
+        doThrow(new Exception("test_whenIngestToInfluxDBThrowsException_globalExceptionHandlerCatches"))
+				.when(this.influxDBHelperMock).ingestToInfluxDb(anyString(), anyString(), anyString(), anyString());
 
         for(int i = 0; i < 1; i++) {
             sender.send(
-                    MockMetricHelper.getValidMetric(i, "hybrid:1667601", true),
+                    MockMetricHelper.getValidMetric(i, "CORE", "hybrid:1667601",
+                            11, true),
                     UNIFIED_METRICS_TOPIC);
         }
 

@@ -21,6 +21,10 @@ public abstract class ConsumerProperties {
         properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
         properties.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, configProps.getSessionTimeoutMsConfig());
         properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        properties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, configProps.getMaxPollRecordsConfig());
+        properties.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, configProps.getFetchMinBytesConfig());
+        properties.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, configProps.getFetchMaxWaitMsConfig());
+        properties.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, configProps.getMaxPartitionFetchBytesConfig());
     }
 
     public void addSslConfig(){

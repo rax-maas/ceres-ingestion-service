@@ -1,6 +1,6 @@
 package com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.config;
 
-import com.rackspace.maas.model.Metric;
+import com.rackspace.monplat.protocol.ExternalMetric;
 import com.rackspacecloud.metrics.ingestionservice.config.ConsumerConfigurationProperties;
 import com.rackspacecloud.metrics.ingestionservice.config.ConsumerProperties;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
@@ -73,14 +73,14 @@ public class RawDataConsumerConfiguration {
      */
     @Bean
     @Autowired
-    ConcurrentKafkaListenerContainerFactory<String, Metric> batchFactory(ConsumerProperties config){
-        ConcurrentKafkaListenerContainerFactory<String, Metric> factory =
+    ConcurrentKafkaListenerContainerFactory<String, ExternalMetric> batchFactory(ConsumerProperties config){
+        ConcurrentKafkaListenerContainerFactory<String, ExternalMetric> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
 
-        ConsumerFactory<String, Metric> consumerFactory =
+        ConsumerFactory<String, ExternalMetric> consumerFactory =
                 new DefaultKafkaConsumerFactory<>(config.properties,
                         new StringDeserializer(),
-                        new AvroDeserializer<>(Metric.class));
+                        new AvroDeserializer<>(ExternalMetric.class));
 
         factory.setConsumerFactory(consumerFactory);
         factory.setBatchListener(true);
@@ -105,6 +105,7 @@ public class RawDataConsumerConfiguration {
 
     @Bean
     MeterRegistryCustomizer<MeterRegistry> metricsCommonTags() {
-        return registry -> registry.config().commonTags("consumer.group", properties.getConsumer().getGroup());
+        return registry -> registry.config().commonTags(
+                "consumer.group", properties.getConsumer().getGroup());
     }
 }

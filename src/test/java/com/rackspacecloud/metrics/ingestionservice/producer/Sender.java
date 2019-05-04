@@ -1,6 +1,6 @@
 package com.rackspacecloud.metrics.ingestionservice.producer;
 
-import com.rackspace.maas.model.Metric;
+import com.rackspace.monplat.protocol.ExternalMetric;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.models.MetricRollup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,12 +11,12 @@ public class Sender {
     private static final Logger LOGGER = LoggerFactory.getLogger(Sender.class);
 
     @Autowired
-    private KafkaTemplate<String, Metric> kafkaTemplate;
+    private KafkaTemplate<String, ExternalMetric> kafkaTemplate;
 
     @Autowired
     private KafkaTemplate<String, MetricRollup> kafkaTemplateRollup;
 
-    public void send(Metric payload, String topic) {
+    public void send(ExternalMetric payload, String topic) {
         LOGGER.info("START: Sending payload [{}]", payload);
         kafkaTemplate.send(topic, payload);
         LOGGER.info("FINISH: Processing");

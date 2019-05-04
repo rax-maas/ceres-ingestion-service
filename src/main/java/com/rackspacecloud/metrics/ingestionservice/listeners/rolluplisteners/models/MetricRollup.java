@@ -39,6 +39,9 @@ public class MetricRollup {
     @JsonProperty("collectionTarget")
     String collectionTarget;
 
+    @JsonProperty("collectionName")
+    String collectionName;
+
     @JsonProperty("units")
     Map<String, String> units;
 

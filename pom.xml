@@ -25,6 +25,7 @@
 		<avro.version>1.8.2</avro.version>
 		<spring-kafka.version>2.2.2.RELEASE</spring-kafka.version>
 		<http-client.version>4.5.5</http-client.version>
+        <influxdb-java.version>2.14</influxdb-java.version>
 		<spring-boot-configuration-processor.version>2.1.0.RELEASE</spring-boot-configuration-processor.version>
 
         <!-- Pass on right value to publish the docker image to the registry -->
@@ -47,7 +48,11 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
-
+		<dependency>
+			<groupId>org.influxdb</groupId>
+			<artifactId>influxdb-java</artifactId>
+			<version>${influxdb-java.version}</version>
+		</dependency>
 		<dependency>
 			<groupId>org.apache.httpcomponents</groupId>
 			<artifactId>httpclient</artifactId>
@@ -113,7 +118,7 @@
         <dependency>
             <groupId>com.github.itzg</groupId>
             <artifactId>stackdriver-spring-boot-autoconfigure</artifactId>
-            <version>1.0</version>
+            <version>1.1.0</version>
         </dependency>
 	</dependencies>
 

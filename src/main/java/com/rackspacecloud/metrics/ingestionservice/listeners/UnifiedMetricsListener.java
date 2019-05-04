@@ -1,61 +1,41 @@
 package com.rackspacecloud.metrics.ingestionservice.listeners;
 
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.support.Acknowledgment;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 public class UnifiedMetricsListener implements ConsumerSeekAware {
 
     protected long batchProcessedCount = 0;
 
-    protected Counter counter;
-
-
     // At the end of every 1000 messages, log this information
     protected static final int MESSAGE_PROCESS_REPORT_COUNT = 1000;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UnifiedMetricsListener.class);
-
-    @Autowired
-    public UnifiedMetricsListener(MeterRegistry registry) {
-        this.counter = registry.counter("batch.processed");
-    }
 
     @Override
     public void registerSeekCallback(ConsumerSeekCallback consumerSeekCallback) {
         LOGGER.info("Registering seekCallback at [{}]", Instant.now());
     }
 
-    protected boolean processPostInfluxDbIngestion(
-            final String recordsString, final int partitionId, final long offset,
-            final Acknowledgment ack, final boolean isInfluxdbIngestionSuccessful) {
+    protected void processPostInfluxDbIngestion(
+            final List<?> records, final int partitionId,
+            final long offset, final Acknowledgment ack) {
 
-        boolean isSuccessful = isInfluxdbIngestionSuccessful;
+        ack.acknowledge();
+        LOGGER.debug("Successfully processed partitionId:{}, offset:{} at {}", partitionId, offset, Instant.now());
 
-        if (isInfluxdbIngestionSuccessful) {
-            ack.acknowledge();
-            LOGGER.debug("Successfully processed partitionId:{}, offset:{} at {}",
-                    partitionId, offset, Instant.now());
-
-            if (batchProcessedCount % MESSAGE_PROCESS_REPORT_COUNT == 0) {
-                LOGGER.info("Processed {} batches.", batchProcessedCount);
-            }
-        } else {
-            LOGGER.error("FAILED at {}: partitionId:{}, offset:{}, processing a batch of given records [{}]",
-                    Instant.now(), partitionId, offset, recordsString);
-            // TODO: retry? OR write messages into some 'maas_metrics_error' topic, so that later on
-            // we can read it from that error topic
+        if (batchProcessedCount % MESSAGE_PROCESS_REPORT_COUNT == 0) {
+            LOGGER.info("Processed {} batches.", batchProcessedCount);
         }
 
-        LOGGER.debug("Done processing for records:{}", recordsString);
+        LOGGER.debug("Done processing for records:{}", records);
 
         // Reset the counter
         if(batchProcessedCount == Long.MAX_VALUE) batchProcessedCount = 0;
@@ -63,8 +43,6 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
         if(batchProcessedCount % MESSAGE_PROCESS_REPORT_COUNT == 0) {
             LOGGER.info("Processed {} batches so far after start or reset...", getBatchProcessedCount());
         }
-
-        return isSuccessful;
     }
 
     @Override
@@ -89,5 +67,17 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
      */
     public long getBatchProcessedCount(){
         return batchProcessedCount;
+    }
+
+    public static String replaceSpecialCharacters(String inputString){
+        final String[] metaCharacters =
+                {"\\",":","^","$","{","}","[","]","(",")",".","*","+","?","|","<",">","-","&","%"," "};
+
+        for (int i = 0 ; i < metaCharacters.length ; i++){
+            if(inputString.contains(metaCharacters[i])){
+                inputString = inputString.replace(metaCharacters[i],"_");
+            }
+        }
+        return inputString;
     }
 }

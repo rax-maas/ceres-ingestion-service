@@ -1,74 +1,94 @@
 package com.rackspacecloud.metrics.ingestionservice.listeners.processors;
 
-import com.rackspacecloud.metrics.ingestionservice.influxdb.Point;
 import lombok.Data;
+import org.influxdb.dto.Point;
 import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBUtils.replaceSpecialCharacters;
-
 @Data
 public class Dimension {
-    private static final String ACCOUNT_ID = "accountId";
-    private static final String MONITORING_ZONE = "monitoringZone";
-    private static final String ENTITY_ID = "entityId";
-    private static final String CHECK_TYPE = "checkType";
+    private static final String TENANT_ID = "tenantId";
+    private static final String ACCOUNT_TYPE = "accountType";
+    private static final String ACCOUNT = "account";
+    private static final String DEVICE = "device";
+    private static final String DEVICE_LABEL = "deviceLabel";
+    private static final String MONITORING_SYSTEM = "monitoringSystem";
+    private static final String COLLECTION_NAME = "collectionName";
+    private static final String COLLECTION_LABEL = "collectionLabel";
+    private static final String COLLECTION_TARGET = "collectionTarget";
 
-    Map<String, String> systemMetadata;
-    String collectionTarget;
-    String monitoringSystem;
-    String collectionLabel;
+    String accountType;
+    String account;
+    String device;
     String deviceLabel;
+    Map<String, String> deviceMetadata;
+    String monitoringSystem;
+    Map<String, String> systemMetadata;
+    String collectionName;
+    String collectionLabel;
+    String collectionTarget;
+    Map<String, String> collectionMetadata;
 
     public Dimension() {
+        deviceMetadata = new HashMap<>();
         systemMetadata = new HashMap<>();
+        collectionMetadata = new HashMap<>();
     }
 
-    public static Point.Builder populateTagsAndFields(Dimension dimension) {
+    public static Point.Builder populateTagsAndFields(
+            Dimension dimension, TenantIdAndMeasurement tenantIdAndMeasurement) {
 
-        String measurement = dimension.getSystemMetadata().get(CHECK_TYPE);
+        if(dimension == null || tenantIdAndMeasurement == null) return null;
+
+        String measurement = tenantIdAndMeasurement.getMeasurement();
         if(measurement == null) return null;
 
-        Point.Builder pointBuilder = Point.measurement(replaceSpecialCharacters(measurement));
+        String tenantId = tenantIdAndMeasurement.getTenantId();
+        if(tenantId == null) return null;
 
-        if(!StringUtils.isEmpty(dimension.getSystemMetadata().get(ACCOUNT_ID))) {
-            pointBuilder.tag("systemaccountid", dimension.getSystemMetadata().get(ACCOUNT_ID).trim());
+        Point.Builder pointBuilder = Point.measurement(measurement);
+        pointBuilder.tag(TENANT_ID, tenantId);
+
+        // Account type is a mandatory field as this is part of tenantId
+        pointBuilder.tag(ACCOUNT_TYPE, dimension.getAccountType().trim());
+
+        // Account is a mandatory field as this is part of tenantId
+        pointBuilder.tag(ACCOUNT, dimension.getAccount().trim());
+
+        if(!StringUtils.isEmpty(dimension.getDevice())) {
+            pointBuilder.tag(DEVICE, wrapTagValues(dimension.getDevice().trim()));
+        }
+
+        if(!StringUtils.isEmpty(dimension.getDevice())) {
+            pointBuilder.tag(DEVICE_LABEL, wrapTagValues(dimension.getDeviceLabel().trim()));
+        }
+
+        Map<String, String> deviceMetadata = dimension.getDeviceMetadata();
+        if(deviceMetadata != null) deviceMetadata.forEach((k, v) -> pointBuilder.tag(k, wrapTagValues(v)));
+
+        // Monitoring system is a mandatory field as this is part of measurement name
+        pointBuilder.tag(MONITORING_SYSTEM, wrapTagValues(dimension.getMonitoringSystem().trim()));
+
+        Map<String, String> systemMetadata = dimension.getSystemMetadata();
+        if(systemMetadata != null) systemMetadata.forEach((k, v) -> pointBuilder.tag(k, wrapTagValues(v)));
+
+        // Collection name is a mandatory field as this is part of measurement name
+        pointBuilder.tag(COLLECTION_NAME, wrapTagValues(dimension.getCollectionName().trim()));
+
+        if(!StringUtils.isEmpty(dimension.getCollectionLabel())) {
+            pointBuilder.tag(COLLECTION_LABEL, wrapTagValues(dimension.getCollectionLabel().trim()));
         }
 
         if(!StringUtils.isEmpty(dimension.getCollectionTarget())) {
-            pointBuilder.tag("target", dimension.getCollectionTarget().trim());
+            pointBuilder.tag(COLLECTION_TARGET, wrapTagValues(dimension.getCollectionTarget().trim()));
         }
-
-        if(!StringUtils.isEmpty(dimension.getMonitoringSystem())) {
-            pointBuilder.tag("monitoringsystem", dimension.getMonitoringSystem().trim());
-        }
-
-        if(!StringUtils.isEmpty(dimension.getCollectionLabel())) {
-            pointBuilder.tag("collectionlabel", dimension.getCollectionLabel().trim());
-        }
-
-        addEntityTags(dimension, pointBuilder);
-        addMonitoringZone(dimension, pointBuilder);
 
         return pointBuilder;
     }
 
-    static void addMonitoringZone(Dimension dimension, Point.Builder pointBuilder) {
-        final String monitoringZone = dimension.getSystemMetadata().get(MONITORING_ZONE);
-        if(!StringUtils.isEmpty(monitoringZone)){
-            pointBuilder.tag("monitoringzone", monitoringZone.trim());
-        }
-    }
-
-    static void addEntityTags(Dimension dimension, Point.Builder pointBuilder) {
-        final String entityId = dimension.getSystemMetadata().get(ENTITY_ID);
-        if(!StringUtils.isEmpty(entityId)) {
-            pointBuilder.tag("entitysystemid", entityId.trim());
-        }
-        if(!StringUtils.isEmpty(dimension.getDeviceLabel())) {
-            pointBuilder.tag("devicelabel", dimension.getDeviceLabel().trim());
-        }
+    private static String wrapTagValues(String tagValue) {
+        return "\"" + tagValue + "\"";
     }
 }

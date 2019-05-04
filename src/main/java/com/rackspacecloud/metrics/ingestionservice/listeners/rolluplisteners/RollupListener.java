@@ -2,9 +2,9 @@ package com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners;
 
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.listeners.UnifiedMetricsListener;
+import com.rackspacecloud.metrics.ingestionservice.listeners.processors.TenantIdAndMeasurement;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.models.MetricRollup;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.processors.MetricsRollupProcessor;
-import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,8 +19,6 @@ import org.springframework.web.client.ResourceAccessException;
 import java.util.List;
 import java.util.Map;
 
-import static com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBUtils.replaceSpecialCharacters;
-
 public class RollupListener extends UnifiedMetricsListener {
     private InfluxDBHelper influxDBHelper;
 
@@ -30,8 +28,7 @@ public class RollupListener extends UnifiedMetricsListener {
     protected static String tenantRoutingServiceUrl;
 
     @Autowired
-    public RollupListener(InfluxDBHelper influxDBHelper, MeterRegistry registry) {
-        super(registry);
+    public RollupListener(InfluxDBHelper influxDBHelper) {
         this.influxDBHelper = influxDBHelper;
     }
 
@@ -44,7 +41,7 @@ public class RollupListener extends UnifiedMetricsListener {
             containerFactory = "batchFactory",
             errorHandler = "listenerErrorHandler"
     )
-    public boolean listenMetricsRollup5m(
+    public void listenMetricsRollup5m(
             @Payload final List<MetricRollup> records,
             @Header(KafkaHeaders.RECEIVED_PARTITION_ID) final int partitionId,
             @Header(KafkaHeaders.OFFSET) final long offset,
@@ -52,7 +49,7 @@ public class RollupListener extends UnifiedMetricsListener {
 
         String rollupLevel = "5m";
 
-        return listenMetricsRollup(records, partitionId, offset, ack, rollupLevel);
+        listenMetricsRollup(records, partitionId, offset, ack, rollupLevel);
     }
 
     @KafkaListener(
@@ -60,7 +57,7 @@ public class RollupListener extends UnifiedMetricsListener {
             containerFactory = "batchFactory",
             errorHandler = "listenerErrorHandler"
     )
-    public boolean listenMetricsRollup20m(
+    public void listenMetricsRollup20m(
             @Payload final List<MetricRollup> records,
             @Header(KafkaHeaders.RECEIVED_PARTITION_ID) final int partitionId,
             @Header(KafkaHeaders.OFFSET) final long offset,
@@ -68,7 +65,7 @@ public class RollupListener extends UnifiedMetricsListener {
 
         String rollupLevel = "20m";
 
-        return listenMetricsRollup(records, partitionId, offset, ack, rollupLevel);
+        listenMetricsRollup(records, partitionId, offset, ack, rollupLevel);
     }
 
     @KafkaListener(
@@ -76,7 +73,7 @@ public class RollupListener extends UnifiedMetricsListener {
             containerFactory = "batchFactory",
             errorHandler = "listenerErrorHandler"
     )
-    public boolean listenMetricsRollup60m(
+    public void listenMetricsRollup60m(
             @Payload final List<MetricRollup> records,
             @Header(KafkaHeaders.RECEIVED_PARTITION_ID) final int partitionId,
             @Header(KafkaHeaders.OFFSET) final long offset,
@@ -84,7 +81,7 @@ public class RollupListener extends UnifiedMetricsListener {
 
         String rollupLevel = "60m";
 
-        return listenMetricsRollup(records, partitionId, offset, ack, rollupLevel);
+        listenMetricsRollup(records, partitionId, offset, ack, rollupLevel);
     }
 
     @KafkaListener(
@@ -92,7 +89,7 @@ public class RollupListener extends UnifiedMetricsListener {
             containerFactory = "batchFactory",
             errorHandler = "listenerErrorHandler"
     )
-    public boolean listenMetricsRollup240m(
+    public void listenMetricsRollup240m(
             @Payload final List<MetricRollup> records,
             @Header(KafkaHeaders.RECEIVED_PARTITION_ID) final int partitionId,
             @Header(KafkaHeaders.OFFSET) final long offset,
@@ -100,7 +97,7 @@ public class RollupListener extends UnifiedMetricsListener {
 
         String rollupLevel = "240m";
 
-        return listenMetricsRollup(records, partitionId, offset, ack, rollupLevel);
+        listenMetricsRollup(records, partitionId, offset, ack, rollupLevel);
     }
 
     @KafkaListener(
@@ -108,7 +105,7 @@ public class RollupListener extends UnifiedMetricsListener {
             containerFactory = "batchFactory",
             errorHandler = "listenerErrorHandler"
     )
-    public boolean listenMetricsRollup1440m(
+    public void listenMetricsRollup1440m(
             @Payload final List<MetricRollup> records,
             @Header(KafkaHeaders.RECEIVED_PARTITION_ID) final int partitionId,
             @Header(KafkaHeaders.OFFSET) final long offset,
@@ -116,10 +113,10 @@ public class RollupListener extends UnifiedMetricsListener {
 
         String rollupLevel = "1440m";
 
-        return listenMetricsRollup(records, partitionId, offset, ack, rollupLevel);
+        listenMetricsRollup(records, partitionId, offset, ack, rollupLevel);
     }
 
-    private boolean listenMetricsRollup(
+    private void listenMetricsRollup(
             @Payload List<MetricRollup> records,
             @Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partitionId,
             @Header(KafkaHeaders.OFFSET) long offset,
@@ -128,28 +125,26 @@ public class RollupListener extends UnifiedMetricsListener {
 
         batchProcessedCount++;
 
-        Map<String, List<String>> tenantPayloadsMap =
+        Map<TenantIdAndMeasurement, List<String>> tenantPayloadsMap =
                 MetricsRollupProcessor.getTenantRollupPayloadsMap(partitionId, offset, records);
 
-        boolean isInfluxdbIngestionSuccessful = writeToInfluxDb(tenantPayloadsMap, rollupLevel);
+        writeToInfluxDb(tenantPayloadsMap, rollupLevel);
 
-        return processPostInfluxDbIngestion(records.toString(),
-                partitionId, offset, ack, isInfluxdbIngestionSuccessful);
+        processPostInfluxDbIngestion(records, partitionId, offset, ack);
     }
 
-    private boolean writeToInfluxDb(
-            final Map<String, List<String>> tenantPayloadsMap,
+    private void writeToInfluxDb(
+            final Map<TenantIdAndMeasurement, List<String>> tenantPayloadsMap,
             final String rollupLevel) throws Exception {
 
-        boolean isInfluxdbIngestionSuccessful = false;
-
-        for(Map.Entry<String, List<String>> entry : tenantPayloadsMap.entrySet()) {
-            String tenantId = entry.getKey();
+        for(Map.Entry<TenantIdAndMeasurement, List<String>> entry : tenantPayloadsMap.entrySet()) {
+            TenantIdAndMeasurement tenantIdAndMeasurement = entry.getKey();
             String payload = String.join("\n", entry.getValue());
             try {
-                // cleanup tenantId by replacing any special character with "_" before passing it to the function
-                isInfluxdbIngestionSuccessful = influxDBHelper.ingestToInfluxDb(
-                        payload, replaceSpecialCharacters(tenantId), rollupLevel);
+                // cleanup tenantIdAndMeasurement by replacing any special character with "_" before passing it to the function
+                influxDBHelper.ingestToInfluxDb(
+                        payload, tenantIdAndMeasurement.getTenantId(),
+                        tenantIdAndMeasurement.getMeasurement(), rollupLevel);
 
             } catch (Exception e) {
                 String msg = String.format("Write to InfluxDB failed with exception message [%s].", e.getMessage());
@@ -162,9 +157,6 @@ public class RollupListener extends UnifiedMetricsListener {
 
                 throw new Exception(msg, e);
             }
-
-            if(!isInfluxdbIngestionSuccessful) break;
         }
-        return isInfluxdbIngestionSuccessful;
     }
 }
