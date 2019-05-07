@@ -1,11 +1,12 @@
 package com.rackspacecloud.metrics.ingestionservice;
 
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
-import com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.RollupListener;
+//import com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.RollupListener;
 import com.rackspacecloud.metrics.ingestionservice.producer.MockMetricRollupHelper;
 import com.rackspacecloud.metrics.ingestionservice.producer.Sender;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,8 +41,8 @@ public class RollupIngestionServiceTests {
     static final String UNIFIED_METRICS_240M_TOPIC = "unified.metrics.json.240m";
     static final String UNIFIED_METRICS_1440M_TOPIC = "unified.metrics.json.1440m";
 
-    @Autowired
-    private RollupListener rollupListener;
+    //@Autowired
+    //private RollupListener rollupListener;
 
 	@Autowired
     private Sender sender;
@@ -49,49 +50,54 @@ public class RollupIngestionServiceTests {
 	@MockBean
     private InfluxDBHelper influxDBHelperMock;
 
-//	@Autowired
-//    KafkaListenerEndpointRegistry kafkaListenerEndpointRegistry;
+	@Autowired
+    KafkaListenerEndpointRegistry kafkaListenerEndpointRegistry;
 
-//    @Before
-//    public void setUp() throws Exception {
-//        // wait until the partitions are assigned
-//        for (MessageListenerContainer listenerContainer : kafkaListenerEndpointRegistry.getListenerContainers()) {
-//            ContainerTestUtils.waitForAssignment(listenerContainer,1);
-//        }
-//    }
+    @Before
+    public void setUp() throws Exception {
+        // wait until the partitions are assigned
+        for (MessageListenerContainer listenerContainer : kafkaListenerEndpointRegistry.getListenerContainers()) {
+            ContainerTestUtils.waitForAssignment(listenerContainer,1);
+        }
+    }
 
-//    @Test
-//    public void test_Rollup5M_Consume() throws Exception {
-//        String topicToSendData = UNIFIED_METRICS_5M_TOPIC;
-//        testForGivenTopic(topicToSendData);
-//    }
-//
-//    @Test
-//    public void test_Rollup20M_Consume() throws Exception {
-//        String topicToSendData = UNIFIED_METRICS_20M_TOPIC;
-//        testForGivenTopic(topicToSendData);
-//    }
-//
-//    @Test
-//    public void test_Rollup60M_Consume() throws Exception {
-//        String topicToSendData = UNIFIED_METRICS_60M_TOPIC;
-//        testForGivenTopic(topicToSendData);
-//    }
-//
-//    @Test
-//    public void test_Rollup240M_Consume() throws Exception {
-//        String topicToSendData = UNIFIED_METRICS_240M_TOPIC;
-//        testForGivenTopic(topicToSendData);
-//    }
-//
-//    @Test
-//    public void test_Rollup1440M_Consume() throws Exception {
-//        String topicToSendData = UNIFIED_METRICS_1440M_TOPIC;
-//        testForGivenTopic(topicToSendData);
-//    }
-//
-//    private void testForGivenTopic(String topicToSendData) throws Exception {
-//        // Mock influxDB ingestion call
+    @Ignore
+    @Test
+    public void test_Rollup5M_Consume() throws Exception {
+        String topicToSendData = UNIFIED_METRICS_5M_TOPIC;
+        testForGivenTopic(topicToSendData);
+    }
+
+    @Ignore
+    @Test
+    public void test_Rollup20M_Consume() throws Exception {
+        String topicToSendData = UNIFIED_METRICS_20M_TOPIC;
+        testForGivenTopic(topicToSendData);
+    }
+
+    @Ignore
+    @Test
+    public void test_Rollup60M_Consume() throws Exception {
+        String topicToSendData = UNIFIED_METRICS_60M_TOPIC;
+        testForGivenTopic(topicToSendData);
+    }
+
+    @Ignore
+    @Test
+    public void test_Rollup240M_Consume() throws Exception {
+        String topicToSendData = UNIFIED_METRICS_240M_TOPIC;
+        testForGivenTopic(topicToSendData);
+    }
+
+    @Ignore
+    @Test
+    public void test_Rollup1440M_Consume() throws Exception {
+        String topicToSendData = UNIFIED_METRICS_1440M_TOPIC;
+        testForGivenTopic(topicToSendData);
+    }
+
+    private void testForGivenTopic(String topicToSendData) throws Exception {
+        // Mock influxDB ingestion call
 //        when(this.influxDBHelperMock.ingestToInfluxDb(anyString(), anyString(), anyString(), anyString()))
 //                .thenReturn(true);
 //
@@ -106,5 +112,5 @@ public class RollupIngestionServiceTests {
 //        long batchProcessed = rollupListener.getBatchProcessedCount();
 //        Assert.assertTrue(
 //                String.format("Failed with batchProcessed count [%s]", batchProcessed), batchProcessed > 0);
-//    }
+    }
 }
