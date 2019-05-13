@@ -110,11 +110,6 @@
 			<artifactId>stackdriver-spring-boot-autoconfigure</artifactId>
 			<version>1.1.0</version>
 		</dependency>
-		<!-- TODO: Remove-->
-		<dependency>
-			<groupId>org.springframework.cloud</groupId>
-			<artifactId>spring-cloud-gcp-starter-storage</artifactId>
-		</dependency>
 		<dependency>
 			<groupId>com.google.cloud</groupId>
 			<artifactId>google-cloud-storage</artifactId>
