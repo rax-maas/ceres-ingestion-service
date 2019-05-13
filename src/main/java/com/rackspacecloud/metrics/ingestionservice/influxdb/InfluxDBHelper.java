@@ -14,6 +14,7 @@ import org.influxdb.dto.Query;
 import org.influxdb.dto.QueryResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
@@ -50,6 +51,9 @@ public class InfluxDBHelper {
     // to get the data first time. Once it has the routing information from routing service,
     // it caches it.
     Timer getInfluxDBInfoTimer;
+
+    @Autowired
+    private LineProtocolBackupService backupService;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InfluxDBHelper.class);
 
@@ -306,6 +310,7 @@ public class InfluxDBHelper {
         long startTime = System.currentTimeMillis();
         try {
             influxDB.write(databaseName, retPolicyName, InfluxDB.ConsistencyLevel.ONE, TimeUnit.SECONDS, payload);
+            backupService.writeToBackup(payload, baseUrl, databaseName, retPolicyName);
         }
         catch(InfluxDBException.PointsBeyondRetentionPolicyException ex) {
             LOGGER.error("Write failed for the payload. baseURL: [{}], databaseName: [{}], ret-policy: [{}]",

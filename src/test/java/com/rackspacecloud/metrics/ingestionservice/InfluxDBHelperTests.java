@@ -1,6 +1,8 @@
 package com.rackspacecloud.metrics.ingestionservice;
 
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
+import com.rackspacecloud.metrics.ingestionservice.influxdb.LineProtocolBackupService;
+import com.rackspacecloud.metrics.ingestionservice.influxdb.LocalUUID;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.RouteProvider;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.TenantRoutes;
 import com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBFactory;
@@ -13,6 +15,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
+import org.mockito.internal.util.reflection.Whitebox;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.annotation.DirtiesContext;
@@ -20,14 +24,10 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.Mockito.*;
 
 @RunWith(SpringRunner.class)
@@ -44,6 +44,9 @@ public class InfluxDBHelperTests {
     Timer influxDBWriteTimer;
     Timer getInfluxDBInfoTimer;
 
+    @Autowired
+    LineProtocolBackupService backup;
+
     @Before
     public void setUp() {
         restTemplateMock = mock(RestTemplate.class);
@@ -54,6 +57,19 @@ public class InfluxDBHelperTests {
         getInfluxDBInfoTimer = mock(Timer.class);
         when(meterRegistry.timer("ingestion.influxdb.write")).thenReturn(influxDBWriteTimer);
         when(meterRegistry.timer("ingestion.routing.info.get")).thenReturn(getInfluxDBInfoTimer);
+    }
+
+    @Test
+    public void backupServiceGetProperName() {
+        LocalUUID mockedUUIDGenerator = mock(LocalUUID.class);
+        Whitebox.setInternalState(backup, "uuidGenerator", mockedUUIDGenerator);
+        when(mockedUUIDGenerator.generateUUID()).thenReturn(UUID.fromString("90f65f79-f3fc-4eb4-ab5b-f003fbdbe54e"));
+
+        assertThat(backup.getBackupFilename("testPayload 1557777267",
+                "db1.ceres.google.com",
+                "myDB",
+                "1440h"))
+                .isEqualTo("db1.ceres.google.com/myDB/1440h/20190513/90f65f79-f3fc-4eb4-ab5b-f003fbdbe54e.gz");
     }
 
     @Test
