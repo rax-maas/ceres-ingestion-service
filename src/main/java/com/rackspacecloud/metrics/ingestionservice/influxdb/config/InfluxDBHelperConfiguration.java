@@ -2,6 +2,7 @@ package com.rackspacecloud.metrics.ingestionservice.influxdb.config;
 
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.DevTestTenantRouteProvider;
+import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.LineProtocolBackupService;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.ProdTenantRouteProvider;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.RouteProvider;
 import com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBFactory;
@@ -99,12 +100,14 @@ public class InfluxDBHelperConfiguration {
             RestTemplate restTemplate,
             RouteProvider routeProvider,
             MeterRegistry registry,
-            InfluxDBFactory influxDBFactory) {
+            InfluxDBFactory influxDBFactory,
+            LineProtocolBackupService backupService) {
         return new InfluxDBHelper(
                 restTemplate,
                 routeProvider,
                 registry,
                 influxDBFactory,
+                backupService,
                 numberOfPointsInAWriteBatch,
                 writeFlushDurationMsLimit);
     }

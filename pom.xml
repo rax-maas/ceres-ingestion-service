@@ -79,7 +79,7 @@
 		</dependency>
 		<dependency>
 			<groupId>org.mockito</groupId>
-			<artifactId>mockito-core</artifactId>
+			<artifactId>mockito-all</artifactId>
 			 <!-- TODO: update -->
 			<version>1.10.19</version>
 			<scope>test</scope>

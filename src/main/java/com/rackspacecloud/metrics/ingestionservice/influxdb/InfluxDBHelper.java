@@ -1,5 +1,6 @@
 package com.rackspacecloud.metrics.ingestionservice.influxdb;
 
+import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.LineProtocolBackupService;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.RouteProvider;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.TenantRoutes;
 import com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBFactory;
@@ -7,7 +8,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import org.influxdb.BatchOptions;
 import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBException;
 import org.influxdb.dto.Query;
@@ -46,20 +46,19 @@ public class InfluxDBHelper {
     private int writeFlushDurationMsLimit;
     private ConcurrentMap<String, InfluxDB> urlInfluxDBInstanceMap;
     Timer influxDBWriteTimer;
+    private LineProtocolBackupService backupService;
 
     // This timer captures the latency for getting data from routing service if it's trying
     // to get the data first time. Once it has the routing information from routing service,
     // it caches it.
     Timer getInfluxDBInfoTimer;
 
-    @Autowired
-    private LineProtocolBackupService backupService;
-
     private static final Logger LOGGER = LoggerFactory.getLogger(InfluxDBHelper.class);
 
     public InfluxDBHelper(
             RestTemplate restTemplate, RouteProvider routeProvider, MeterRegistry registry,
             InfluxDBFactory influxDBFactory,
+            LineProtocolBackupService backupService,
             int numberOfPointsInAWriteBatch, int writeFlushDurationMsLimit){
         this.restTemplate = restTemplate;
         this.routeProvider = routeProvider;
@@ -68,6 +67,7 @@ public class InfluxDBHelper {
         this.urlInfluxDBInstanceMap = new ConcurrentHashMap<>();
         this.numberOfPointsInAWriteBatch = numberOfPointsInAWriteBatch;
         this.writeFlushDurationMsLimit = writeFlushDurationMsLimit;
+        this.backupService = backupService;
 
         this.influxDBWriteTimer = registry.timer("ingestion.influxdb.write");
         this.getInfluxDBInfoTimer = registry.timer("ingestion.routing.info.get");

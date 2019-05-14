@@ -5,7 +5,7 @@ import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
-import org.apache.tomcat.jni.Local;
+import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.LineProtocolBackupService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.Cacheable;
@@ -15,20 +15,19 @@ import java.io.IOException;
 import java.nio.channels.Channels;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
-import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPOutputStream;
 
 @Component
-public class LineProtocolBackupService {
+public class GCLineProtocolBackupService implements LineProtocolBackupService {
 
     // Reusable thread-safe date-time formatter for files going in a bucket
     private static DateTimeFormatter dateBucketFormat = DateTimeFormatter.ofPattern("yyyyMMdd");
 
-    private static Pattern payloadTimestampPattern = Pattern.compile(" (\\d)*^");
+    private static Pattern payloadTimestampPattern = Pattern.compile(" ([\\d]*)^");
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(LineProtocolBackupService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(GCLineProtocolBackupService.class);
 
     /**
      * We want data to be stored in the following format:
@@ -38,7 +37,7 @@ public class LineProtocolBackupService {
      * @param fileName the full name of the file we are writing to
      * @return the cached reference to the gzip output stream for that blob
      */
-    @Cacheable(value = "backupBuffer", key = "fileName")
+    @Cacheable(value = "lineProtocolBackupWriter", key = "fileName")
     public GZIPOutputStream getBackupStream(String fileName) throws IOException {
         // Instantiates a client
         Storage storage = StorageOptions.getDefaultInstance().getService();
@@ -52,6 +51,7 @@ public class LineProtocolBackupService {
         // return new GZIPOutputStream(Channels.newOutputStream(storage.writer(blobInfo)), true); // to enable flushing the compressor
     }
 
+    @Override
     public void writeToBackup(String payload, String instance, String database, String retentionPolicy) throws IOException {
         getBackupStream(getBackupFilename(payload, instance, database, retentionPolicy)).write(payload.getBytes());
     }
