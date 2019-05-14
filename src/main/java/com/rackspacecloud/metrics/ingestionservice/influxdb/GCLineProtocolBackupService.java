@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.nio.channels.Channels;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -23,9 +24,7 @@ import java.util.zip.GZIPOutputStream;
 public class GCLineProtocolBackupService implements LineProtocolBackupService {
 
     // Reusable thread-safe date-time formatter for files going in a bucket
-    private static DateTimeFormatter dateBucketFormat = DateTimeFormatter.ofPattern("yyyyMMdd");
-
-    private static Pattern payloadTimestampPattern = Pattern.compile(" ([\\d]*)^");
+    private static DateTimeFormatter dateBucketFormat = DateTimeFormatter.ofPattern("yyyyMMdd").withZone(ZoneOffset.UTC);
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GCLineProtocolBackupService.class);
 
@@ -65,6 +64,7 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
         }
     };
 
+    private static Pattern payloadTimestampPattern = Pattern.compile(" ([0-9]*)$");
     private static long parseTimestampFromPayload(String payload) {
         Matcher m = payloadTimestampPattern.matcher(payload);
         m.find();
