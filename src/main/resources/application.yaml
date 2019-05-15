@@ -45,6 +45,9 @@ influxdb:
   number-of-points-in-a-write-batch: 3000
   write-flush-duration-ms-limit: 100
 
+backup:
+  gcs-backup-bucket: ceres-backup-dev
+
 ---
 spring:
   profiles: development
@@ -125,6 +128,9 @@ cache:
   cache-names: backupBuffers
   caffeine:
     spec: expireAfterAccess=6h
+
+backup:
+  gcs-backup-bucket: ceres-backup-dev
 ---
 spring:
   profiles: production
@@ -217,3 +223,6 @@ management:
         enabled: ${STACKDRIVER_ENABLED}
         batch-size: ${STACKDRIVER_BATCH_SIZE}
 #        num-threads: 10
+
+backup:
+  gcs-backup-bucket: ceres-backup-prod

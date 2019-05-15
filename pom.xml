@@ -80,7 +80,6 @@
 		<dependency>
 			<groupId>org.mockito</groupId>
 			<artifactId>mockito-all</artifactId>
-			 <!-- TODO: update -->
 			<version>1.10.19</version>
 			<scope>test</scope>
 		</dependency>
@@ -114,6 +113,11 @@
 			<groupId>com.google.cloud</groupId>
 			<artifactId>google-cloud-storage</artifactId>
 			<version>1.70.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.cloud</groupId>
+			<artifactId>google-cloud-nio</artifactId>
+			<version>0.91.0-alpha</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
