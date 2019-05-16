@@ -3,7 +3,6 @@ server:
 spring:
   application:
     name: ceres-ingestion-service
-
 ---
 spring:
   profiles: test
@@ -46,8 +45,7 @@ influxdb:
   write-flush-duration-ms-limit: 100
 
 backup:
-  gcs-backup-bucket: ceres-backup-dev
-
+  gcs-backup-bucket: "ceres-backup-dev"
 ---
 spring:
   profiles: development

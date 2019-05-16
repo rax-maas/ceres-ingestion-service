@@ -9,10 +9,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
+import org.springframework.util.Assert;
 
+import javax.annotation.Resource;
 import java.io.IOException;
 import java.nio.channels.Channels;
 import java.time.Instant;
@@ -26,20 +27,30 @@ import java.util.zip.GZIPOutputStream;
 public class GCLineProtocolBackupService implements LineProtocolBackupService {
 
     // Reusable thread-safe date-time formatter for files going in a bucket
-    private static DateTimeFormatter dateBucketFormat = DateTimeFormatter.ofPattern("yyyyMMdd")
+    private static final DateTimeFormatter dateBucketFormat = DateTimeFormatter.ofPattern("yyyyMMdd")
             .withZone(ZoneOffset.UTC);
-
     private static final Logger LOGGER = LoggerFactory.getLogger(GCLineProtocolBackupService.class);
+    // The underlying blob storage. Dev/test will uses in-memory storage
+    private final Storage storage;
+    // The bucket where blobs will go
+    private final String cloudOutputBucket;
 
-    // TODO:
-    // To autowire we'll need to get an account and point this to
-    // GOOGLE_APPLICATION_CREDENTIALS
+    // Internal methods of this class attempt to talk to the Cache proxy
+    // instead of the GCLineProtocolBackupService object
+    @Resource
+    private LineProtocolBackupService self;
+
+    // To autowire Storage in prod we'll need to get an account and point
+    // GOOGLE_APPLICATION_CREDENTIALS to the json creds file
+    // for a service account
     // as per https://www.baeldung.com/java-google-cloud-storage
     @Autowired
-    private Storage storage;
-
-    @Value("${backup.gcs-backup-bucket}")
-    private String cloudOutputBucket;
+    public GCLineProtocolBackupService(Storage storage, @Value("${backup.gcs-backup-bucket}") String cloudOutputBucket) {
+        Assert.notNull(storage, "Storage must not be null");
+        Assert.notNull(cloudOutputBucket, "The output bucket must not be null");
+        this.storage = storage;
+        this.cloudOutputBucket = cloudOutputBucket;
+    }
 
     /**
      * We want data to be stored in the following format: /[profile-specific
@@ -51,23 +62,24 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
      * @param fileName the full name of the file we are writing to
      * @return the cached reference to the gzip output stream for that blob
      */
-    @Cacheable(value = "lineProtocolBackupWriter", key = "fileName")
+    @Cacheable(cacheNames = "lineProtocolBackupWriter")
     public GZIPOutputStream getBackupStream(String fileName) throws IOException {
+        Assert.notNull(fileName, "fileName must not be null");
+        Assert.notNull(cloudOutputBucket, "bucket name was not injected properly");
+        Assert.notNull(storage, "storage was not injected properly");
         BlobId blobId = BlobId.of(cloudOutputBucket, fileName);
         BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType("application/gzip").build();
-        return new GZIPOutputStream(Channels.newOutputStream(storage.writer(blobInfo)));
-        // return new
-        // GZIPOutputStream(Channels.newOutputStream(storage.writer(blobInfo)), true);
-        // // to enable flushing the compressor
+        // enable flushing the compressor
+        return new GZIPOutputStream(Channels.newOutputStream(storage.writer(blobInfo)), true);
     }
 
     @Override
     public void writeToBackup(String payload, String instance, String database, String retentionPolicy)
             throws IOException {
-        getBackupStream(getBackupFilename(payload, instance, database, retentionPolicy)).write(payload.getBytes());
+        self.getBackupStream(getBackupFilename(payload, instance, database, retentionPolicy)).write(payload.getBytes());
     }
 
-    public static RemovalListener removalListener = (RemovalListener<String, GZIPOutputStream>) (key, value, cause) -> {
+    public static final RemovalListener removalListener = (RemovalListener<String, GZIPOutputStream>) (key, value, cause) -> {
         try {
             value.finish();
             value.close();
@@ -77,7 +89,7 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
         }
     };
 
-    private static Pattern payloadTimestampPattern = Pattern.compile(" ([0-9]*)$");
+    private static final Pattern payloadTimestampPattern = Pattern.compile(" ([0-9]*)$");
 
     private static long parseTimestampFromPayload(String payload) {
         Matcher m = payloadTimestampPattern.matcher(payload);
@@ -85,7 +97,7 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
         return Integer.valueOf(m.group(1));
     }
 
-    private static LocalUUID uuidGenerator = new LocalUUID();
+    private static final LocalUUID uuidGenerator = new LocalUUID();
 
     /**
      * @param payload         The payload; used to extract timestamp
