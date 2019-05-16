@@ -1,15 +1,13 @@
 package com.rackspacecloud.metrics.ingestionservice;
 
+import com.google.cloud.storage.Storage;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.GCLineProtocolBackupService;
-import com.rackspacecloud.metrics.ingestionservice.influxdb.LocalUUID;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.LineProtocolBackupService;
-
-import org.junit.Before;
+import org.apache.commons.io.IOUtils;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.internal.util.reflection.Whitebox;
-import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.annotation.DirtiesContext;
@@ -17,12 +15,11 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.io.IOException;
-import java.util.UUID;
+import java.nio.channels.Channels;
+import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest
@@ -33,6 +30,12 @@ public class GCLineProtocolBackupServiceTests {
 
     @Autowired
     private LineProtocolBackupService backupService;
+
+    @Autowired
+    private Storage storage;
+
+    @Value("${backup.gcs-backup-bucket}")
+    private String bucket;
 
     @Test
     public void backupServiceGetProperName() {
@@ -60,13 +63,16 @@ public class GCLineProtocolBackupServiceTests {
     }
 
     @Test
-    public void checkFiles() throws IOException {
-        AopUtils.
-        Object object = Whitebox.getInternalState(backupService, "proxy");
+    public void checkFile() throws IOException {
         GZIPOutputStream outputStream1 = backupService.getBackupStream("testFile1");
-        GZIPOutputStream outputStream2 = backupService.getBackupStream("testFile1");
-        GZIPOutputStream outputStream3 = backupService.getBackupStream("testFile2");
-        assertThat(outputStream1).isEqualTo(outputStream2);
-        assertThat(outputStream2).isNotEqualTo(outputStream3);
+        outputStream1.write("test1".getBytes());
+        outputStream1.close();
+        assertThat(storage.get(bucket, "testFile1")).isNotNull();
+        assertThat(IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(bucket, "testFile1"))))).isEqualTo("test1");
+    }
+
+    @Test
+    public void checkBucket() {
+        assertThat(bucket).isEqualTo("ceres-backup-dev");
     }
 }

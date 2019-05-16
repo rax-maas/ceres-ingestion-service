@@ -46,6 +46,7 @@ influxdb:
 
 backup:
   gcs-backup-bucket: "ceres-backup-dev"
+  gcs-timeout: 5s
 ---
 spring:
   profiles: development
@@ -129,6 +130,7 @@ cache:
 
 backup:
   gcs-backup-bucket: ceres-backup-dev
+  gcs-timeout: 5s
 ---
 spring:
   profiles: production
@@ -224,3 +226,4 @@ management:
 
 backup:
   gcs-backup-bucket: ceres-backup-prod
+  gcs-timeout: 1h
