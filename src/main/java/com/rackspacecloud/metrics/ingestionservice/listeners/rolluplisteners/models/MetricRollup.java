@@ -61,6 +61,7 @@ public class MetricRollup {
     Map<String, RollupBucket<Double>> fvalues;
 
     @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class RollupBucket<T> {
         T min;
         T max;

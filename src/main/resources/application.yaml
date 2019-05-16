@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 8085
 spring:
   application:
     name: ceres-ingestion-service
@@ -124,6 +124,9 @@ management:
 ---
 spring:
   profiles: production
+
+server:
+  port: 8080
 
 rest-template:
   request-config:

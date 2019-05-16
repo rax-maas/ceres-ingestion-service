@@ -9,10 +9,9 @@ import org.influxdb.dto.Point;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -48,7 +47,7 @@ public class MetricsRollupProcessor {
     public static final Map<TenantIdAndMeasurement, List<String>> getTenantRollupPayloadsMap(
             int partitionId, long offset, List<MetricRollup> records) {
 
-        Map<TenantIdAndMeasurement, List<String>> tenantPayloadMap = new HashMap<>();
+        ConcurrentMap<TenantIdAndMeasurement, List<String>> tenantPayloadMap = new ConcurrentHashMap<>();
         int numberOfRecordsNotConvertedIntoInfluxDBPoints = 0;
 
         for(MetricRollup record : records) {
@@ -70,11 +69,12 @@ public class MetricsRollupProcessor {
                 populatePayload(record, pointBuilder);
                 Point point =  pointBuilder.build();
 
-                if (!tenantPayloadMap.containsKey(tenantIdAndMeasurement))
-                    tenantPayloadMap.put(tenantIdAndMeasurement, new ArrayList<>());
+                List<String> payloads = tenantPayloadMap.computeIfAbsent(tenantIdAndMeasurement,
+                        key -> Collections.synchronizedList(new ArrayList<>()));
 
-                List<String> payloads = tenantPayloadMap.get(tenantIdAndMeasurement);
-                payloads.add(point.lineProtocol(TimeUnit.SECONDS));
+                synchronized (payloads) {
+                    payloads.add(point.lineProtocol(TimeUnit.SECONDS));
+                }
             }
             catch (Exception ex) {
                 numberOfRecordsNotConvertedIntoInfluxDBPoints++;

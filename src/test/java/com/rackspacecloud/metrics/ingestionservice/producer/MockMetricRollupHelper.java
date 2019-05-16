@@ -29,6 +29,7 @@ public class MockMetricRollupHelper {
         systemMetadata.put("monitoringZone", "");
         metricRollup.setSystemMetadata(systemMetadata);
 
+        metricRollup.setCollectionName("dummy-collection-name");
         metricRollup.setCollectionLabel("dummy-collection-label");
         metricRollup.setCollectionTarget("");
 

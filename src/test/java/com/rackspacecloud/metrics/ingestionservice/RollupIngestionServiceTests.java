@@ -1,7 +1,7 @@
 package com.rackspacecloud.metrics.ingestionservice;
 
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
-//import com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.RollupListener;
+import com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.RollupListener;
 import com.rackspacecloud.metrics.ingestionservice.producer.MockMetricRollupHelper;
 import com.rackspacecloud.metrics.ingestionservice.producer.Sender;
 import org.junit.Assert;
@@ -21,7 +21,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doNothing;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest
@@ -41,8 +41,8 @@ public class RollupIngestionServiceTests {
     static final String UNIFIED_METRICS_240M_TOPIC = "unified.metrics.json.240m";
     static final String UNIFIED_METRICS_1440M_TOPIC = "unified.metrics.json.1440m";
 
-    //@Autowired
-    //private RollupListener rollupListener;
+    @Autowired
+    private RollupListener rollupListener;
 
 	@Autowired
     private Sender sender;
@@ -61,35 +61,30 @@ public class RollupIngestionServiceTests {
         }
     }
 
-    @Ignore
     @Test
     public void test_Rollup5M_Consume() throws Exception {
         String topicToSendData = UNIFIED_METRICS_5M_TOPIC;
         testForGivenTopic(topicToSendData);
     }
 
-    @Ignore
     @Test
     public void test_Rollup20M_Consume() throws Exception {
         String topicToSendData = UNIFIED_METRICS_20M_TOPIC;
         testForGivenTopic(topicToSendData);
     }
 
-    @Ignore
     @Test
     public void test_Rollup60M_Consume() throws Exception {
         String topicToSendData = UNIFIED_METRICS_60M_TOPIC;
         testForGivenTopic(topicToSendData);
     }
 
-    @Ignore
     @Test
     public void test_Rollup240M_Consume() throws Exception {
         String topicToSendData = UNIFIED_METRICS_240M_TOPIC;
         testForGivenTopic(topicToSendData);
     }
 
-    @Ignore
     @Test
     public void test_Rollup1440M_Consume() throws Exception {
         String topicToSendData = UNIFIED_METRICS_1440M_TOPIC;
@@ -98,19 +93,18 @@ public class RollupIngestionServiceTests {
 
     private void testForGivenTopic(String topicToSendData) throws Exception {
         // Mock influxDB ingestion call
-//        when(this.influxDBHelperMock.ingestToInfluxDb(anyString(), anyString(), anyString(), anyString()))
-//                .thenReturn(true);
-//
-//        for(int i = 0; i < 1; i++) {
-//            sender.sendRollup(
-//                    MockMetricRollupHelper.getValidMetricRollup(i, "hybrid:1667601", true),
-//                    topicToSendData);
-//        }
-//
-//        Thread.sleep(10*1000L); // wait for a few sec for consumer to process some records
-//
-//        long batchProcessed = rollupListener.getBatchProcessedCount();
-//        Assert.assertTrue(
-//                String.format("Failed with batchProcessed count [%s]", batchProcessed), batchProcessed > 0);
+        doNothing().when(this.influxDBHelperMock).ingestToInfluxDb(anyString(), anyString(), anyString(), anyString());
+
+        for(int i = 0; i < 1; i++) {
+            sender.sendRollup(
+                    MockMetricRollupHelper.getValidMetricRollup(i, "hybrid:1667601", true),
+                    topicToSendData);
+        }
+
+        Thread.sleep(10*1000L); // wait for a few sec for consumer to process some records
+
+        long batchProcessed = rollupListener.getBatchProcessedCount();
+        Assert.assertTrue(
+                String.format("Failed with batchProcessed count [%s]", batchProcessed), batchProcessed > 0);
     }
 }
