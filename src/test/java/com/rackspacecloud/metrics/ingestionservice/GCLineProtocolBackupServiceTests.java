@@ -1,6 +1,7 @@
 package com.rackspacecloud.metrics.ingestionservice;
 
 import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageException;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.GCLineProtocolBackupService;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.LineProtocolBackupService;
 import org.apache.commons.io.IOUtils;
@@ -16,6 +17,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import java.io.IOException;
 import java.nio.channels.Channels;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -67,12 +69,45 @@ public class GCLineProtocolBackupServiceTests {
         GZIPOutputStream outputStream1 = backupService.getBackupStream("testFile1");
         outputStream1.write("test1".getBytes());
         outputStream1.close();
-        assertThat(storage.get(bucket, "testFile1")).isNotNull();
         assertThat(IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(bucket, "testFile1"))))).isEqualTo("test1");
     }
 
     @Test
     public void checkBucket() {
         assertThat(bucket).isEqualTo("ceres-backup-dev");
+    }
+
+    @Test(expected = StorageException.class)
+    public void testTimeoutNoTimeout() throws IOException {
+        GZIPOutputStream outputStream1 = backupService.getBackupStream("testFile1");
+        outputStream1.write("test1".getBytes());
+        IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(bucket, "testFile1"))));
+    }
+
+    @Test
+    public void testTimeoutWithTimeout() throws IOException, InterruptedException {
+        GZIPOutputStream outputStream1 = backupService.getBackupStream("testFile1");
+        outputStream1.write("test1".getBytes());
+        TimeUnit.SECONDS.sleep(10);
+        assertThat(IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(bucket, "testFile1"))))).isEqualTo("test1");
+    }
+
+    @Test
+    public void testServiceTwoDbInstances() throws IOException {
+        backupService.writeToBackup("testPayload1 1557777267", "db1.ceres.google.com",
+                "myDB", "1440h");
+        backupService.writeToBackup("testPayload2 1557777268", "db1.ceres.google.com",
+                "myDB", "1440h");
+        backupService.writeToBackup("testPayload3 1557777269", "db1.ceres.google.com",
+                "myDB", "1440h");
+
+        backupService.writeToBackup("testPayload1 1557777267", "db2.ceres.google.com",
+                "myDB", "1440h");
+        backupService.writeToBackup("testPayload2 1557777268", "db2.ceres.google.com",
+                "myDB", "1440h");
+        backupService.writeToBackup("testPayload3 1557777269", "db2.ceres.google.com",
+                "myDB", "1440h");
+
+
     }
 }

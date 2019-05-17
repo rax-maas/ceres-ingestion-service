@@ -123,11 +123,6 @@ management:
         project-id: ceres-dev-222017
         enabled: false
 
-cache:
-  cache-names: backupBuffers
-  caffeine:
-    spec: expireAfterAccess=6h
-
 backup:
   gcs-backup-bucket: ceres-backup-dev
   gcs-timeout: 5s
