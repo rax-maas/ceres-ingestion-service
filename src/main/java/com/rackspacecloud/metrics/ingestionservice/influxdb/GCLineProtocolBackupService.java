@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
@@ -19,6 +20,7 @@ import java.nio.channels.Channels;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPOutputStream;
@@ -59,14 +61,15 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
      *
      * File is line-protocol, gzipped, size may require some testing
      *
-     * @param fileName the full name of the file we are writing to
+     * @param location the bucket location (directory) of the file we are writing to
      * @return the cached reference to the gzip output stream for that blob
      */
     @Cacheable(cacheNames = "lineProtocolBackupWriter")
-    public GZIPOutputStream getBackupStream(String fileName) throws IOException {
-        Assert.notNull(fileName, "fileName must not be null");
+    public GZIPOutputStream getBackupStream(String location) throws IOException {
+        Assert.notNull(location, "fileName must not be null");
         Assert.notNull(cloudOutputBucket, "bucket name was not injected properly");
         Assert.notNull(storage, "storage was not injected properly");
+        String fileName = location + "/" + UUID.randomUUID().toString() + ".gz";
         BlobId blobId = BlobId.of(cloudOutputBucket, fileName);
         BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType("application/gzip").build();
         // enable flushing the compressor
@@ -76,7 +79,17 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
     @Override
     public void writeToBackup(String payload, String instance, String database, String retentionPolicy)
             throws IOException {
-        self.getBackupStream(getBackupFilename(payload, instance, database, retentionPolicy)).write(payload.getBytes());
+        GZIPOutputStream gzipOutputStream = self.getBackupStream(getBackupLocation(payload, instance, database, retentionPolicy));
+        synchronized(gzipOutputStream) {
+            gzipOutputStream.write(payload.getBytes());
+            gzipOutputStream.write("\n".getBytes()); // add separator
+        }
+    }
+
+    @Override
+    @CacheEvict(value = "lineProtocolBackupWriter", allEntries = true)
+    public void clear() {
+        LOGGER.debug("Clearing cache");
     }
 
     public static final RemovalListener removalListener = (RemovalListener<String, GZIPOutputStream>) (key, value, cause) -> {
@@ -97,8 +110,6 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
         return Integer.valueOf(m.group(1));
     }
 
-    private static final LocalUUID uuidGenerator = new LocalUUID();
-
     /**
      * @param payload         The payload; used to extract timestamp
      * @param instance        The instance this payload would be going to
@@ -107,9 +118,8 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
      *                        under
      * @return the name of the new blob or file
      */
-    public static String getBackupFilename(String payload, String instance, String database, String retentionPolicy) {
+    public static String getBackupLocation(String payload, String instance, String database, String retentionPolicy) {
         return instance + "/" + database + "/" + retentionPolicy + "/"
-                + dateBucketFormat.format(Instant.ofEpochSecond(parseTimestampFromPayload(payload))) + "/"
-                + uuidGenerator.generateUUID().toString() + ".gz";
+                + dateBucketFormat.format(Instant.ofEpochSecond(parseTimestampFromPayload(payload)));
     }
 }

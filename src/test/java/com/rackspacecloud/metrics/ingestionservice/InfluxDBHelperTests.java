@@ -61,19 +61,6 @@ public class InfluxDBHelperTests {
     }
 
     @Test
-    public void backupServiceGetProperName() {
-        LocalUUID mockedUUIDGenerator = mock(LocalUUID.class);
-        Whitebox.setInternalState(backupService, "uuidGenerator", mockedUUIDGenerator);
-        when(mockedUUIDGenerator.generateUUID()).thenReturn(UUID.fromString("90f65f79-f3fc-4eb4-ab5b-f003fbdbe54e"));
-
-        assertThat(backupService.getBackupFilename("testPayload 1557777267",
-                "db1.ceres.google.com",
-                "myDB",
-                "1440h"))
-                .isEqualTo("db1.ceres.google.com/myDB/1440h/20190513/90f65f79-f3fc-4eb4-ab5b-f003fbdbe54e.gz");
-    }
-
-    @Test
     public void ingestToInfluxDb_withExistingDatabaseAndRetPolicy_shouldSucceed() throws Exception {
         InfluxDBHelper influxDBHelper = new InfluxDBHelper(
                 restTemplateMock, routeProviderMock, meterRegistry,

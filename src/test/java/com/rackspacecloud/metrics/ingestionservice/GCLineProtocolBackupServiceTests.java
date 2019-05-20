@@ -1,10 +1,12 @@
 package com.rackspacecloud.metrics.ingestionservice;
 
+import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageException;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.GCLineProtocolBackupService;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.LineProtocolBackupService;
 import org.apache.commons.io.IOUtils;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +19,9 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import java.io.IOException;
 import java.nio.channels.Channels;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -39,11 +44,23 @@ public class GCLineProtocolBackupServiceTests {
     @Value("${backup.gcs-backup-bucket}")
     private String bucket;
 
+    @Before
+    public void setUp() throws InterruptedException {
+        // Purge any remaining buffers
+        backupService.clear();
+        // Make sure cache is purged
+        
+        // Clear all storage
+        if(storage.list(bucket)!=null) {
+            storage.list(bucket).iterateAll().forEach(blob -> blob.delete());
+        }
+    }
+
     @Test
     public void backupServiceGetProperName() {
-        assertThat(GCLineProtocolBackupService.getBackupFilename("testPayload 1557777267", "db1.ceres.google.com",
+        assertThat(GCLineProtocolBackupService.getBackupLocation("testPayload 1557777267", "db1.ceres.google.com",
                 "myDB", "1440h"))
-                        .matches("db1\\.ceres\\.google\\.com/myDB/1440h/20190513/.*\\.gz");
+                        .matches("db1\\.ceres\\.google\\.com/myDB/1440h/20190513");
     }
 
     @Test
@@ -69,7 +86,8 @@ public class GCLineProtocolBackupServiceTests {
         GZIPOutputStream outputStream1 = backupService.getBackupStream("testFile1");
         outputStream1.write("test1".getBytes());
         outputStream1.close();
-        assertThat(IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(bucket, "testFile1"))))).isEqualTo("test1");
+        assertThat(IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(bucket,
+                storage.list(bucket).getValues().iterator().next().getName()))))).isEqualTo("test1");
     }
 
     @Test
@@ -78,36 +96,54 @@ public class GCLineProtocolBackupServiceTests {
     }
 
     @Test(expected = StorageException.class)
-    public void testTimeoutNoTimeout() throws IOException {
+    public void testWriteAndRead() throws IOException {
         GZIPOutputStream outputStream1 = backupService.getBackupStream("testFile1");
         outputStream1.write("test1".getBytes());
-        IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(bucket, "testFile1"))));
+        IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(bucket,
+                storage.list(bucket).getValues().iterator().next().getName()))));
     }
 
     @Test
-    public void testTimeoutWithTimeout() throws IOException, InterruptedException {
+    public void testCacheClear() throws IOException, InterruptedException {
         GZIPOutputStream outputStream1 = backupService.getBackupStream("testFile1");
         outputStream1.write("test1".getBytes());
-        TimeUnit.SECONDS.sleep(10);
-        assertThat(IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(bucket, "testFile1"))))).isEqualTo("test1");
+        backupService.clear();
+        
+        assertThat(IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(bucket,
+                storage.list(bucket).getValues().iterator().next().getName()))))).isEqualTo("test1");
     }
 
     @Test
-    public void testServiceTwoDbInstances() throws IOException {
-        backupService.writeToBackup("testPayload1 1557777267", "db1.ceres.google.com",
+    public void testServiceTwoDbInstances() throws IOException, InterruptedException {
+        backupService.writeToBackup("testPayload11 1557777267", "db1.ceres.google.com",
                 "myDB", "1440h");
-        backupService.writeToBackup("testPayload2 1557777268", "db1.ceres.google.com",
+        backupService.writeToBackup("testPayload12 1557777268", "db1.ceres.google.com",
                 "myDB", "1440h");
-        backupService.writeToBackup("testPayload3 1557777269", "db1.ceres.google.com",
-                "myDB", "1440h");
-
-        backupService.writeToBackup("testPayload1 1557777267", "db2.ceres.google.com",
-                "myDB", "1440h");
-        backupService.writeToBackup("testPayload2 1557777268", "db2.ceres.google.com",
-                "myDB", "1440h");
-        backupService.writeToBackup("testPayload3 1557777269", "db2.ceres.google.com",
+        backupService.writeToBackup("testPayload13 1557777269", "db1.ceres.google.com",
                 "myDB", "1440h");
 
+        backupService.writeToBackup("testPayload21 1557777267", "db2.ceres.google.com",
+                "myDB", "1440h");
+        backupService.writeToBackup("testPayload22 1557777268", "db2.ceres.google.com",
+                "myDB", "1440h");
+        backupService.writeToBackup("testPayload23 1557777269", "db2.ceres.google.com",
+                "myDB", "1440h");
 
+        backupService.clear();
+        
+
+        Iterator<Blob> iterator = storage.list(bucket).getValues().iterator();
+
+        List<Blob> blobList = new ArrayList<>();
+        iterator.forEachRemaining(blobList::add);
+
+        assertThat(blobList.size()).isEqualTo(2);
+
+        String blob1 = blobList.get(0).getName();
+        String blob2 = blobList.get(1).getName();
+        assertThat(IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(bucket, blob1)))))
+                .matches("testPayload[12]1 1557777267\ntestPayload[12]2 1557777268\ntestPayload[12]3 1557777269\n");
+        assertThat(IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(bucket, blob2)))))
+                .matches("testPayload[12]1 1557777267\ntestPayload[12]2 1557777268\ntestPayload[12]3 1557777269\n");
     }
 }
