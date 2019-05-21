@@ -4,13 +4,14 @@ import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageException;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.GCLineProtocolBackupService;
+import com.rackspacecloud.metrics.ingestionservice.influxdb.config.BackupProperties;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.LineProtocolBackupService;
 import org.apache.commons.io.IOUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.annotation.DirtiesContext;
@@ -32,6 +33,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 @ActiveProfiles(value = { "test" })
 @DirtiesContext
 @EmbeddedKafka(partitions = 1, topics = { IngestionServiceApplicationTests.UNIFIED_METRICS_TOPIC })
+@EnableConfigurationProperties(BackupProperties.class)
 public class GCLineProtocolBackupServiceTests {
 
     @Autowired
@@ -40,8 +42,8 @@ public class GCLineProtocolBackupServiceTests {
     @Autowired
     private Storage storage;
 
-    @Value("${backup.gcs-backup-bucket}")
-    private String bucket;
+    @Autowired
+    private BackupProperties backupProperties;
 
     @Before
     public void setUp() throws InterruptedException {
@@ -50,8 +52,8 @@ public class GCLineProtocolBackupServiceTests {
         // Make sure cache is purged
         
         // Clear all storage
-        if(storage.list(bucket)!=null) {
-            storage.list(bucket).iterateAll().forEach(blob -> blob.delete());
+        if(storage.list(backupProperties.getGcsBackupBucket())!=null) {
+            storage.list(backupProperties.getGcsBackupBucket()).iterateAll().forEach(blob -> blob.delete());
         }
     }
 
@@ -85,21 +87,21 @@ public class GCLineProtocolBackupServiceTests {
         GZIPOutputStream outputStream1 = backupService.getBackupStream("testFile1");
         outputStream1.write("test1".getBytes());
         outputStream1.close();
-        assertThat(IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(bucket,
-                storage.list(bucket).getValues().iterator().next().getName()))))).isEqualTo("test1");
+        assertThat(IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(backupProperties.getGcsBackupBucket(),
+                storage.list(backupProperties.getGcsBackupBucket()).getValues().iterator().next().getName()))))).isEqualTo("test1");
     }
 
     @Test
     public void checkBucket() {
-        assertThat(bucket).isEqualTo("ceres-backup-dev");
+        assertThat(backupProperties.getGcsBackupBucket()).isEqualTo("ceres-backup-dev");
     }
 
     @Test(expected = StorageException.class)
     public void testWriteAndRead() throws IOException {
         GZIPOutputStream outputStream1 = backupService.getBackupStream("testFile1");
         outputStream1.write("test1".getBytes());
-        IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(bucket,
-                storage.list(bucket).getValues().iterator().next().getName()))));
+        IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(backupProperties.getGcsBackupBucket(),
+                storage.list(backupProperties.getGcsBackupBucket()).getValues().iterator().next().getName()))));
     }
 
     @Test
@@ -108,8 +110,8 @@ public class GCLineProtocolBackupServiceTests {
         outputStream1.write("test1".getBytes());
         backupService.clear();
         
-        assertThat(IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(bucket,
-                storage.list(bucket).getValues().iterator().next().getName()))))).isEqualTo("test1");
+        assertThat(IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(backupProperties.getGcsBackupBucket(),
+                storage.list(backupProperties.getGcsBackupBucket()).getValues().iterator().next().getName()))))).isEqualTo("test1");
     }
 
     @Test
@@ -131,7 +133,7 @@ public class GCLineProtocolBackupServiceTests {
         backupService.clear();
         
 
-        Iterator<Blob> iterator = storage.list(bucket).getValues().iterator();
+        Iterator<Blob> iterator = storage.list(backupProperties.getGcsBackupBucket()).getValues().iterator();
 
         List<Blob> blobList = new ArrayList<>();
         iterator.forEachRemaining(blobList::add);
@@ -140,9 +142,9 @@ public class GCLineProtocolBackupServiceTests {
 
         String blob1 = blobList.get(0).getName();
         String blob2 = blobList.get(1).getName();
-        assertThat(IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(bucket, blob1)))))
+        assertThat(IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(backupProperties.getGcsBackupBucket(), blob1)))))
                 .matches("testPayload[12]1 1557777267\ntestPayload[12]2 1557777268\ntestPayload[12]3 1557777269\n");
-        assertThat(IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(bucket, blob2)))))
+        assertThat(IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(backupProperties.getGcsBackupBucket(), blob2)))))
                 .matches("testPayload[12]1 1557777267\ntestPayload[12]2 1557777268\ntestPayload[12]3 1557777269\n");
     }
 }

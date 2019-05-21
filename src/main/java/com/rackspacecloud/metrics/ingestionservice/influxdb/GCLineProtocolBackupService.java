@@ -4,11 +4,14 @@ import com.github.benmanes.caffeine.cache.RemovalListener;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
+import com.rackspacecloud.metrics.ingestionservice.influxdb.config.BackupProperties;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.LineProtocolBackupService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -26,6 +29,7 @@ import java.util.regex.Pattern;
 import java.util.zip.GZIPOutputStream;
 
 @Service
+@EnableConfigurationProperties(BackupProperties.class)
 public class GCLineProtocolBackupService implements LineProtocolBackupService {
 
     // Reusable thread-safe date-time formatter for files going in a bucket
@@ -47,11 +51,13 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
     // for a service account
     // as per https://www.baeldung.com/java-google-cloud-storage
     @Autowired
-    public GCLineProtocolBackupService(Storage storage, @Value("${backup.gcs-backup-bucket}") String cloudOutputBucket) {
+    public GCLineProtocolBackupService(Storage storage, BackupProperties backupProperties) {
         Assert.notNull(storage, "Storage must not be null");
-        Assert.notNull(cloudOutputBucket, "The output bucket must not be null");
+        Assert.notNull(backupProperties, "The backup properties must not be null");
+        // TODO: remove gcs prefix to make abstraction cleaner
+        Assert.notNull(backupProperties.getGcsBackupBucket(), "The output bucket must not be null");
         this.storage = storage;
-        this.cloudOutputBucket = cloudOutputBucket;
+        this.cloudOutputBucket = backupProperties.getGcsBackupBucket();
     }
 
     /**
