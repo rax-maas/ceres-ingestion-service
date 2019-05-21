@@ -46,10 +46,9 @@ public class GCLineProtocolBackupServiceTests {
     private BackupProperties backupProperties;
 
     @Before
-    public void setUp() throws InterruptedException {
+    public void setUp() {
         // Purge any remaining buffers
         backupService.clear();
-        // Make sure cache is purged
         
         // Clear all storage
         if(storage.list(backupProperties.getGcsBackupBucket())!=null) {

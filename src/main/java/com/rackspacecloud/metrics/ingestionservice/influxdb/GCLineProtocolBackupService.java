@@ -17,6 +17,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 
+import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
 import java.io.IOException;
 import java.nio.channels.Channels;
@@ -93,6 +94,7 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
     }
 
     @Override
+    @PreDestroy
     @CacheEvict(value = "lineProtocolBackupWriter", allEntries = true)
     public void clear() {
         LOGGER.debug("Clearing cache");
