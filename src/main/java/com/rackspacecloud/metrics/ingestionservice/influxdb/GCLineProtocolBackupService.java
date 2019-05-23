@@ -73,7 +73,7 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
      */
     @Cacheable(cacheNames = "lineProtocolBackupWriter")
     public GZIPOutputStream getBackupStream(String location) throws IOException {
-        Assert.notNull(location, "fileName must not be null");
+        Assert.notNull(location, "location must not be null");
         Assert.notNull(cloudOutputBucket, "bucket name was not injected properly");
         Assert.notNull(storage, "storage was not injected properly");
         String fileName = location + "/" + UUID.randomUUID().toString() + ".gz";
