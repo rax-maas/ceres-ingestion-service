@@ -68,14 +68,12 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
      *
      * File is line-protocol, gzipped, size may require some testing
      *
-     * @param location the bucket location (directory) of the file we are writing to
+     * @param location the location within the bucket (directory) where blobs will be written to
      * @return the cached reference to the gzip output stream for that blob
      */
     @Cacheable(cacheNames = "lineProtocolBackupWriter")
     public GZIPOutputStream getBackupStream(String location) throws IOException {
-        Assert.notNull(location, "location must not be null");
-        Assert.notNull(cloudOutputBucket, "bucket name was not injected properly");
-        Assert.notNull(storage, "storage was not injected properly");
+        Assert.hasText(location, "location must contain text");
         String fileName = location + "/" + UUID.randomUUID().toString() + ".gz";
         BlobId blobId = BlobId.of(cloudOutputBucket, fileName);
         BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType("application/gzip").build();
@@ -86,6 +84,10 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
     @Override
     public void writeToBackup(String payload, String instance, String database, String retentionPolicy)
             throws IOException {
+        Assert.hasText(payload, "payload must be a line protocol payload");
+        Assert.hasText(instance, "instance must be a valid database instance");
+        Assert.hasText(database, "database name must not be missing");
+        Assert.hasText(retentionPolicy, "retention policy name must not be missing");
         GZIPOutputStream gzipOutputStream = self.getBackupStream(getBackupLocation(payload, instance, database, retentionPolicy));
         synchronized(gzipOutputStream) {
             gzipOutputStream.write(payload.getBytes());
@@ -127,6 +129,10 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
      * @return the name of the new blob or file
      */
     public static String getBackupLocation(String payload, String instance, String database, String retentionPolicy) {
+        Assert.hasText(payload, "payload must be a line protocol payload");
+        Assert.hasText(instance, "instance must be a valid database instance");
+        Assert.hasText(database, "database name must not be missing");
+        Assert.hasText(retentionPolicy, "retention policy name must not be missing");
         return instance + "/" + database + "/" + retentionPolicy + "/"
                 + dateBucketFormat.format(Instant.ofEpochSecond(parseTimestampFromPayload(payload)));
     }
