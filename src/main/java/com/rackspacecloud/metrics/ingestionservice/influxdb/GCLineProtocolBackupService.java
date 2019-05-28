@@ -89,6 +89,7 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
         Assert.hasText(database, "database name must not be missing");
         Assert.hasText(retentionPolicy, "retention policy name must not be missing");
         GZIPOutputStream gzipOutputStream = self.getBackupStream(getBackupLocation(payload, instance, database, retentionPolicy));
+        Assert.notNull(gzipOutputStream, "Cache provided a null cloud stream");
         synchronized(gzipOutputStream) {
             gzipOutputStream.write(payload.getBytes());
             gzipOutputStream.write("\n".getBytes()); // add separator
@@ -104,10 +105,11 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
 
     public static final RemovalListener removalListener = (RemovalListener<String, GZIPOutputStream>) (key, value, cause) -> {
         try {
+            Assert.notNull(value, "Cache removed a null value");
             value.finish();
             value.close();
         } catch (IOException e) {
-            // this will be eliminated and logged automatically
+            // Exceptions in this method will be eliminated and logged automatically by spring
             throw new RuntimeException(e);
         }
     };
@@ -117,7 +119,7 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
     private static long parseTimestampFromPayload(String payload) {
         Matcher m = payloadTimestampPattern.matcher(payload);
         m.find();
-        return Integer.valueOf(m.group(1));
+        return Long.valueOf(m.group(1));
     }
 
     /**

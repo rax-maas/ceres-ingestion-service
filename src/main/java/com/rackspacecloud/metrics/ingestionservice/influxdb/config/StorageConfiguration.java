@@ -14,7 +14,6 @@ import org.springframework.context.annotation.Scope;
 public class StorageConfiguration {
 
     @Bean
-    @Scope("singleton")
     @Profile("production")
     public Storage gcStorage(){
         // This should grab the file pointed to by the GOOGLE_APPLICATION_CREDENTIALS environment variable
@@ -22,7 +21,6 @@ public class StorageConfiguration {
     }
 
     @Bean
-    @Scope("singleton")
     @Profile({"test", "dev"})
     public Storage memStorage(){
         // In-memory storage for testing
