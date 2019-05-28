@@ -3,7 +3,6 @@ server:
 spring:
   application:
     name: ceres-ingestion-service
-
 ---
 spring:
   profiles: test
@@ -45,6 +44,9 @@ influxdb:
   number-of-points-in-a-write-batch: 3000
   write-flush-duration-ms-limit: 100
 
+backup:
+  gcs-backup-bucket: "ceres-backup-dev"
+  gcs-timeout: 5s
 ---
 spring:
   profiles: development
@@ -121,6 +123,9 @@ management:
         project-id: ceres-dev-222017
         enabled: false
 
+backup:
+  gcs-backup-bucket: ceres-backup-dev
+  gcs-timeout: 5s
 ---
 spring:
   profiles: production
@@ -213,3 +218,7 @@ management:
         enabled: ${STACKDRIVER_ENABLED}
         batch-size: ${STACKDRIVER_BATCH_SIZE}
 #        num-threads: 10
+
+backup:
+  gcs-backup-bucket: ceres-backup-prod
+  gcs-timeout: 1h

@@ -1,23 +1,18 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<?xml version="1.0" encoding="UTF-8" ?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-
 	<groupId>com.rackspacecloud.metrics</groupId>
 	<artifactId>ingestion-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
-
 	<name>ingestion-service</name>
 	<description>Kafka consumer for metrics data to influxDB</description>
-
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>2.1.0.RELEASE</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
-
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -25,20 +20,17 @@
 		<avro.version>1.8.2</avro.version>
 		<spring-kafka.version>2.2.2.RELEASE</spring-kafka.version>
 		<http-client.version>4.5.5</http-client.version>
-        <influxdb-java.version>2.14</influxdb-java.version>
+		<influxdb-java.version>2.14</influxdb-java.version>
 		<spring-boot-configuration-processor.version>2.1.0.RELEASE</spring-boot-configuration-processor.version>
-
-        <!-- Pass on right value to publish the docker image to the registry -->
-        <docker.image.prefix>gcr.io/PROJECT_ID</docker.image.prefix>
+		<!-- Pass on right value to publish the docker image to the registry -->
+		<docker.image.prefix>gcr.io/PROJECT_ID</docker.image.prefix>
 	</properties>
-
-    <repositories>
-        <repository>
-            <id>jitpack.io</id>
-            <url>https://jitpack.io</url>
-        </repository>
-    </repositories>
-
+	<repositories>
+		<repository>
+			<id>jitpack.io</id>
+			<url>https://jitpack.io</url>
+		</repository>
+	</repositories>
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -75,7 +67,6 @@
 			<version>${spring-boot-configuration-processor.version}</version>
 			<optional>true</optional>
 		</dependency>
-
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
@@ -86,14 +77,12 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-
 		<dependency>
 			<groupId>org.mockito</groupId>
 			<artifactId>mockito-all</artifactId>
 			<version>1.10.19</version>
 			<scope>test</scope>
 		</dependency>
-
 		<dependency>
 			<groupId>org.springframework.kafka</groupId>
 			<artifactId>spring-kafka-test</artifactId>
@@ -110,25 +99,50 @@
 			<artifactId>micrometer-registry-influx</artifactId>
 			<version>1.1.2</version>
 		</dependency>
-        <dependency>
-            <groupId>org.aspectj</groupId>
-            <artifactId>aspectjrt</artifactId>
-            <version>1.9.2</version>
-        </dependency>
-        <dependency>
-            <groupId>com.github.itzg</groupId>
-            <artifactId>stackdriver-spring-boot-autoconfigure</artifactId>
-            <version>1.1.0</version>
-        </dependency>
+		<dependency>
+			<groupId>org.aspectj</groupId>
+			<artifactId>aspectjrt</artifactId>
+			<version>1.9.2</version>
+		</dependency>
+		<dependency>
+			<groupId>com.github.itzg</groupId>
+			<artifactId>stackdriver-spring-boot-autoconfigure</artifactId>
+			<version>1.1.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.cloud</groupId>
+			<artifactId>google-cloud-storage</artifactId>
+			<version>1.70.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.cloud</groupId>
+			<artifactId>google-cloud-nio</artifactId>
+			<version>0.91.0-alpha</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-cache</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.github.ben-manes.caffeine</groupId>
+			<artifactId>caffeine</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-io</artifactId>
+			<version>1.3.2</version>
+		</dependency>
 	</dependencies>
-
 	<build>
 		<plugins>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
-
 			<!-- avro-maven-plugin -->
 			<plugin>
 				<groupId>org.apache.avro</groupId>
@@ -147,7 +161,6 @@
 					</execution>
 				</executions>
 			</plugin>
-
 			<!--force discovery of generated classes-->
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
@@ -168,31 +181,30 @@
 					</execution>
 				</executions>
 			</plugin>
-
-            <plugin>
-                <groupId>com.google.cloud.tools</groupId>
-                <artifactId>jib-maven-plugin</artifactId>
-                <version>1.0.0</version>
-                <configuration>
-                    <to>
-                        <image>${docker.image.prefix}/metrics-ingestion-service</image>
-                        <tags>
-                          <tag>${project.version}</tag>
-                          <tag>${env.SHORT_SHA}</tag>
-                          <tag>${env.BRANCH_NAME}</tag>
-                        </tags>
-                    </to>
-                </configuration>
-            </plugin>
-            <plugin>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.22.1</version>
-                <configuration>
-                    <!-- disabling this to resolve build issue on Linux:
+			<plugin>
+				<groupId>com.google.cloud.tools</groupId>
+				<artifactId>jib-maven-plugin</artifactId>
+				<version>1.0.0</version>
+				<configuration>
+					<to>
+						<image>${docker.image.prefix}/metrics-ingestion-service</image>
+						<tags>
+							<tag>${project.version}</tag>
+							<tag>${env.SHORT_SHA}</tag>
+							<tag>${env.BRANCH_NAME}</tag>
+						</tags>
+					</to>
+				</configuration>
+			</plugin>
+			<plugin>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>2.22.1</version>
+				<configuration>
+					<!-- disabling this to resolve build issue on Linux:
                     Error: Could not find or load main class org.apache.maven.surefire.booter.ForkedBooter -->
-                    <useSystemClassLoader>false</useSystemClassLoader>
-                </configuration>
-            </plugin>
+					<useSystemClassLoader>false</useSystemClassLoader>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
 </project>

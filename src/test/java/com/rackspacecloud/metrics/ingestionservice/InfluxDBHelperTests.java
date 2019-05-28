@@ -1,6 +1,7 @@
 package com.rackspacecloud.metrics.ingestionservice;
 
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
+import com.rackspacecloud.metrics.ingestionservice.influxdb.GCLineProtocolBackupService;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.RouteProvider;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.TenantRoutes;
 import com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBFactory;
@@ -20,14 +21,11 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.io.IOException;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.Mockito.*;
 
 @RunWith(SpringRunner.class)
@@ -43,15 +41,17 @@ public class InfluxDBHelperTests {
     InfluxDBFactory influxDBUtilsMock;
     Timer influxDBWriteTimer;
     Timer getInfluxDBInfoTimer;
+    GCLineProtocolBackupService backupService;
 
     @Before
-    public void setUp() {
+    public void setUp() throws IOException {
         restTemplateMock = mock(RestTemplate.class);
         routeProviderMock = mock(RouteProvider.class);
         meterRegistry = mock(MeterRegistry.class);
         influxDBUtilsMock = mock(InfluxDBFactory.class);
         influxDBWriteTimer = mock(Timer.class);
         getInfluxDBInfoTimer = mock(Timer.class);
+        backupService = mock(GCLineProtocolBackupService.class);
         when(meterRegistry.timer("ingestion.influxdb.write")).thenReturn(influxDBWriteTimer);
         when(meterRegistry.timer("ingestion.routing.info.get")).thenReturn(getInfluxDBInfoTimer);
     }
@@ -60,7 +60,7 @@ public class InfluxDBHelperTests {
     public void ingestToInfluxDb_withExistingDatabaseAndRetPolicy_shouldSucceed() throws Exception {
         InfluxDBHelper influxDBHelper = new InfluxDBHelper(
                 restTemplateMock, routeProviderMock, meterRegistry,
-                influxDBUtilsMock, 100, 100);
+                influxDBUtilsMock, backupService, 100, 100);
         String tenantId = "hybrid:1667601";
         String measurement = "cpu";
         String databaseName = "existing_db";
@@ -80,7 +80,7 @@ public class InfluxDBHelperTests {
     @Test
     public void ingestToInfluxDb_withNonExistingDatabase_shouldCreateDatabase() throws Exception {
         InfluxDBHelper influxDBHelper = new InfluxDBHelper(
-                restTemplateMock, routeProviderMock, meterRegistry, influxDBUtilsMock,
+                restTemplateMock, routeProviderMock, meterRegistry, influxDBUtilsMock, backupService,
                 100, 100);
         String tenantId = "hybrid:1667601";
         String measurement = "cpu";
@@ -99,7 +99,7 @@ public class InfluxDBHelperTests {
             throws Exception {
         InfluxDBHelper influxDBHelper = new InfluxDBHelper(
                 restTemplateMock, routeProviderMock, meterRegistry,
-                influxDBUtilsMock, 100, 100);
+                influxDBUtilsMock, backupService, 100, 100);
         String tenantId = "hybrid:1667601";
         String measurement = "cpu";
         String databaseName = "existing_db";
