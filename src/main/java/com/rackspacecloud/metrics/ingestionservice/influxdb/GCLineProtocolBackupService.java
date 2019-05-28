@@ -19,6 +19,7 @@ import org.springframework.util.Assert;
 
 import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
+import javax.validation.constraints.AssertTrue;
 import java.io.IOException;
 import java.nio.channels.Channels;
 import java.time.Instant;
@@ -118,7 +119,7 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
 
     private static long parseTimestampFromPayload(String payload) {
         Matcher m = payloadTimestampPattern.matcher(payload);
-        m.find();
+        Assert.isTrue(m.find(), "Could not find timestamp in payload");
         return Long.valueOf(m.group(1));
     }
 
