@@ -8,8 +8,6 @@ import java.util.zip.GZIPOutputStream;
  */
 public interface LineProtocolBackupService {
 
-    // TODO: remove?
-
     /**
      * @param location Specify a particular location (i.e. a "directory" within a bucket)
      * @return A backup stream where line protocol lines can be written to
@@ -27,11 +25,9 @@ public interface LineProtocolBackupService {
      */
     void writeToBackup(String payload, String instance, String database, String retentionPolicy) throws IOException;
 
-    // TODO: rename to close? flush? shutdown?
-
     /**
      * Flushes and closes all buffers to the implemented backend and clears any caching.
      * New requests will generate new streams.
      */
-    void clear();
+    void flush();
 }

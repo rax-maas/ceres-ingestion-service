@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Profile;
 public class StorageConfiguration {
 
     @Bean
-    @Profile("production")
+    @Profile({"production"})
     public Storage gcStorage(){
         // This should grab the file pointed to by the GOOGLE_APPLICATION_CREDENTIALS environment variable
         return StorageOptions.getDefaultInstance().getService();

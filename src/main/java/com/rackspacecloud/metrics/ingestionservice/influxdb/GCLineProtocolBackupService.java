@@ -9,17 +9,15 @@ import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.LineProtoc
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.annotation.Scope;
+import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
-
 import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
-import javax.validation.constraints.AssertTrue;
 import java.io.IOException;
 import java.nio.channels.Channels;
 import java.time.Instant;
@@ -32,6 +30,7 @@ import java.util.zip.GZIPOutputStream;
 
 @Service
 @EnableConfigurationProperties(BackupProperties.class)
+@Scope(proxyMode = ScopedProxyMode.TARGET_CLASS)
 public class GCLineProtocolBackupService implements LineProtocolBackupService {
 
     // Reusable thread-safe date-time formatter for files going in a bucket
@@ -45,8 +44,12 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
 
     // Internal methods of this class attempt to talk to the Cache proxy
     // instead of the GCLineProtocolBackupService object
-    @Resource
     private LineProtocolBackupService self;
+
+    @Resource
+    public void setLineProtocolBackupService(LineProtocolBackupService self) {
+        this.self = self;
+    }
 
     // To autowire Storage in prod we'll need to get an account and point
     // GOOGLE_APPLICATION_CREDENTIALS to the json creds file
@@ -100,7 +103,7 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
     @Override
     @PreDestroy
     @CacheEvict(value = "lineProtocolBackupWriter", allEntries = true)
-    public void clear() {
+    public void flush() {
         LOGGER.debug("Clearing cache");
     }
 
