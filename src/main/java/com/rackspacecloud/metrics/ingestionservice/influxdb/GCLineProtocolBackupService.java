@@ -12,8 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.context.annotation.Scope;
-import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import javax.annotation.PreDestroy;
@@ -30,7 +28,6 @@ import java.util.zip.GZIPOutputStream;
 
 @Service
 @EnableConfigurationProperties(BackupProperties.class)
-@Scope(proxyMode = ScopedProxyMode.TARGET_CLASS)
 public class GCLineProtocolBackupService implements LineProtocolBackupService {
 
     // Reusable thread-safe date-time formatter for files going in a bucket

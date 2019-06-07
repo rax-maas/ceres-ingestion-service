@@ -63,5 +63,7 @@ public class GCLineProtocolBackupServiceIntegrationTests {
 
         backupService.writeToBackup("testPayload11 1557777267", "test-instance",
                 "test-db", "test-policy");
+
+        backupService.flush();
     }
 }
