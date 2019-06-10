@@ -124,7 +124,7 @@ management:
         enabled: false
 
 backup:
-  gcs-backup-bucket: ceres-backup-dev
+  gcs-backup-bucket: "ceres-backup-dev"
   gcs-timeout: 5s
 ---
 spring:
@@ -220,5 +220,5 @@ management:
 #        num-threads: 10
 
 backup:
-  gcs-backup-bucket: ceres-backup-prod
+  gcs-backup-bucket: "ceres-backup-dev"
   gcs-timeout: 1h

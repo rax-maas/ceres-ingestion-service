@@ -48,7 +48,7 @@ public class GCLineProtocolBackupServiceTests {
     @Before
     public void setUp() {
         // Purge any remaining buffers
-        backupService.clear();
+        backupService.flush();
         
         // Clear all storage
         if(storage.list(backupProperties.getGcsBackupBucket())!=null) {
@@ -104,17 +104,18 @@ public class GCLineProtocolBackupServiceTests {
     }
 
     @Test
-    public void testCacheClear() throws IOException, InterruptedException {
+    public void testCacheClear() throws IOException {
         GZIPOutputStream outputStream1 = backupService.getBackupStream("testFile1");
         outputStream1.write("test1".getBytes());
-        backupService.clear();
+        backupService.flush();
         
         assertThat(IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(backupProperties.getGcsBackupBucket(),
                 storage.list(backupProperties.getGcsBackupBucket()).getValues().iterator().next().getName()))))).isEqualTo("test1");
     }
 
+    // This test will fail when the cache is not working properly, i.e. re-issuing multiple files instead of caching.
     @Test
-    public void testServiceTwoDbInstances() throws IOException, InterruptedException {
+    public void testServiceTwoDbInstances() throws IOException {
         backupService.writeToBackup("testPayload11 1557777267", "db1.ceres.google.com",
                 "myDB", "1440h");
         backupService.writeToBackup("testPayload12 1557777268", "db1.ceres.google.com",
@@ -129,7 +130,7 @@ public class GCLineProtocolBackupServiceTests {
         backupService.writeToBackup("testPayload23 1557777269", "db2.ceres.google.com",
                 "myDB", "1440h");
 
-        backupService.clear();
+        backupService.flush();
         
 
         Iterator<Blob> iterator = storage.list(backupProperties.getGcsBackupBucket()).getValues().iterator();
