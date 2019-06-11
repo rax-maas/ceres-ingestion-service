@@ -5,8 +5,7 @@ import com.rackspacecloud.metrics.ingestionservice.listeners.UnifiedMetricsListe
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.TenantIdAndMeasurement;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.models.MetricRollup;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.processors.MetricsRollupProcessor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -19,10 +18,9 @@ import org.springframework.web.client.ResourceAccessException;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 public class RollupListener extends UnifiedMetricsListener {
     private InfluxDBHelper influxDBHelper;
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(RollupListener.class);
 
     @Value("${tenant-routing-service.url}")
     protected static String tenantRoutingServiceUrl;
@@ -149,10 +147,10 @@ public class RollupListener extends UnifiedMetricsListener {
             } catch (Exception e) {
                 String msg = String.format("Write to InfluxDB failed with exception message [%s].", e.getMessage());
                 if(e.getCause().getClass().equals(ResourceAccessException.class)){
-                    LOGGER.error(msg, e);
+                    log.error(msg, e);
                 }
                 else {
-                    LOGGER.error("[{}] Payload [{}]", msg, payload, e);
+                    log.error("[{}] Payload [{}]", msg, payload, e);
                 }
 
                 throw new Exception(msg, e);

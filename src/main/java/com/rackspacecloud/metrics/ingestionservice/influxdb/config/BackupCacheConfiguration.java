@@ -2,6 +2,7 @@ package com.rackspacecloud.metrics.ingestionservice.influxdb.config;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.GCLineProtocolBackupService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
@@ -11,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @EnableCaching
+@Slf4j
 public class BackupCacheConfiguration {
 
     @Autowired
@@ -25,6 +27,7 @@ public class BackupCacheConfiguration {
                         .expireAfterAccess(backupProperties.getGcsTimeout())
                         .removalListener(GCLineProtocolBackupService.removalListener)
                         );
+        log.info("Configuring caffeine backup cache with timeout of {}", backupProperties.getGcsTimeout());
         return ccm;
     }
 }

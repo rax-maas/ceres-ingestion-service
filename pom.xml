@@ -187,6 +187,10 @@
 				<artifactId>jib-maven-plugin</artifactId>
 				<version>1.0.0</version>
 				<configuration>
+					<from>
+						<!-- The shell will be located at /busybox/sh -->
+						<image>gcr.io/distroless/java:debug</image>
+					</from>
 					<to>
 						<image>${docker.image.prefix}/metrics-ingestion-service</image>
 						<tags>

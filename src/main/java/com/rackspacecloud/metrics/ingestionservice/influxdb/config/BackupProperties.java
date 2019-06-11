@@ -16,4 +16,6 @@ public class BackupProperties {
     private String gcsBackupBucket;
     @NotNull(message = "gcs-timeout duration should be configured, but is not")
     private Duration gcsTimeout;
+    @NotNull(message = "gcs-flush duration should be configured, but is not")
+    private Duration gcsFlushDuration;
 }

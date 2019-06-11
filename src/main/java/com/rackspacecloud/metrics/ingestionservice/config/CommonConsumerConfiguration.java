@@ -2,10 +2,8 @@ package com.rackspacecloud.metrics.ingestionservice.config;
 
 import io.micrometer.core.aop.TimedAspect;
 import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.config.MeterFilter;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.TopicPartition;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,9 +17,8 @@ import java.util.List;
 import java.util.Map;
 
 @Configuration
+@Slf4j
 public class CommonConsumerConfiguration {
-    private static Logger LOGGER = LoggerFactory.getLogger(CommonConsumerConfiguration.class);
-
     /**
      * This error handler is used by kafka listeners to handle any exception in that listener.
      * @return
@@ -51,7 +48,7 @@ public class CommonConsumerConfiguration {
 
             String allTopicPartitions = String.join(",", topicPartitions);
 
-            LOGGER.error("Kafka listener failed for these topics and partitions [{}].", allTopicPartitions, e);
+            log.error("Kafka listener failed for these topics and partitions [{}].", allTopicPartitions, e);
 
             return null;
         };

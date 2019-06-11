@@ -8,8 +8,7 @@ import com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.proces
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Timer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -24,6 +23,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+@Slf4j
 public class RawListener extends UnifiedMetricsListener {
     private InfluxDBHelper influxDBHelper;
     private MeterRegistry registry;
@@ -32,8 +32,6 @@ public class RawListener extends UnifiedMetricsListener {
     private AtomicInteger gaugeRecordsCount;
 
     private Tag rawListenerTag;
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(RawListener.class);
 
     @Value("${tenant-routing-service.url}")
     protected static String tenantRoutingServiceUrl;
@@ -95,7 +93,7 @@ public class RawListener extends UnifiedMetricsListener {
 
             } catch (Exception e) {
                 String msg = String.format("Write to InfluxDB failed with exception message [%s].", e.getMessage());
-                LOGGER.error("[{}] Payload [{}]", msg, payload, e);
+                log.error("[{}] Payload [{}]", msg, payload, e);
 
 //                throw new Exception(msg, e);
             }
