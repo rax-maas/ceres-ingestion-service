@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 
@@ -102,6 +103,7 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
     @Override
     @PreDestroy
     @CacheEvict(value = "lineProtocolBackupWriter", allEntries = true)
+    @Scheduled(fixedRateString = "${backup.gcs-flush-milliseconds}", initialDelay = 10000)
     public void flush() {
         log.debug("Clearing cache");
     }
