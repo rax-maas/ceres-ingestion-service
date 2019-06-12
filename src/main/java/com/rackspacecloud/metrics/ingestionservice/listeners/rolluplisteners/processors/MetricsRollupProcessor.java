@@ -5,11 +5,12 @@ import com.rackspacecloud.metrics.ingestionservice.listeners.processors.CommonMe
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.Dimension;
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.TenantIdAndMeasurement;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.models.MetricRollup;
+import lombok.extern.slf4j.Slf4j;
 import org.influxdb.dto.Point;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
@@ -17,8 +18,8 @@ import java.util.concurrent.TimeUnit;
 /**
  * This class processes MetricsRollup (JSON) message from Kafka into InfluxDB formatted line-protocol string
  */
-public class MetricsRollupProcessor {
-    private static final Logger LOGGER = LoggerFactory.getLogger(MetricsRollupProcessor.class);
+@Slf4j
+public class MetricsRollupProcessor {    
 
     private static Dimension getDimensions(MetricRollup record) {
         Dimension dimension = new Dimension();
@@ -51,7 +52,7 @@ public class MetricsRollupProcessor {
         int numberOfRecordsNotConvertedIntoInfluxDBPoints = 0;
 
         for(MetricRollup record : records) {
-            LOGGER.debug("Received partitionId:{}; Offset:{}; record:{}", partitionId, offset, record);
+            log.debug("Received partitionId:{}; Offset:{}; record:{}", partitionId, offset, record);
 
             String accountType = record.getAccountType();
             String account = record.getAccount();
@@ -78,12 +79,12 @@ public class MetricsRollupProcessor {
             }
             catch (Exception ex) {
                 numberOfRecordsNotConvertedIntoInfluxDBPoints++;
-                LOGGER.error("Can't convert message into InfluxDB Point. Faulty Message is: [{}]", record);
+                log.error("Can't convert message into InfluxDB Point. Faulty Message is: [{}]", record);
             }
         }
 
         if(numberOfRecordsNotConvertedIntoInfluxDBPoints > 0) {
-            LOGGER.info("Out of [{}] messages in this batch [{}] couldn't convert into InfluxDB Points.",
+            log.info("Out of [{}] messages in this batch [{}] couldn't convert into InfluxDB Points.",
                     records.size(), numberOfRecordsNotConvertedIntoInfluxDBPoints);
         }
 

@@ -6,14 +6,15 @@ import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.config.BackupProperties;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.LineProtocolBackupService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
+
 import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
 import java.io.IOException;
@@ -28,12 +29,12 @@ import java.util.zip.GZIPOutputStream;
 
 @Service
 @EnableConfigurationProperties(BackupProperties.class)
+@Slf4j
 public class GCLineProtocolBackupService implements LineProtocolBackupService {
 
     // Reusable thread-safe date-time formatter for files going in a bucket
     private static final DateTimeFormatter dateBucketFormat = DateTimeFormatter.ofPattern("yyyyMMdd")
             .withZone(ZoneOffset.UTC);
-    private static final Logger LOGGER = LoggerFactory.getLogger(GCLineProtocolBackupService.class);
     // The underlying blob storage. Dev/test will uses in-memory storage
     private final Storage storage;
     // The bucket where blobs will go
@@ -79,6 +80,7 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
         BlobId blobId = BlobId.of(cloudOutputBucket, fileName);
         BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType("application/gzip").build();
         // enable flushing the compressor
+        log.info("Returning a new backup stream for {} in bucket {}", blobInfo, cloudOutputBucket);
         return new GZIPOutputStream(Channels.newOutputStream(storage.writer(blobInfo)), true);
     }
 
@@ -91,6 +93,7 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
         Assert.hasText(retentionPolicy, "retention policy name must not be missing");
         GZIPOutputStream gzipOutputStream = self.getBackupStream(getBackupLocation(payload, instance, database, retentionPolicy));
         Assert.notNull(gzipOutputStream, "Cache provided a null cloud stream");
+        log.info("Writing to ({},{},{}) using stream {}: {}", instance, database, retentionPolicy, gzipOutputStream, payload);
         synchronized(gzipOutputStream) {
             gzipOutputStream.write(payload.getBytes());
             gzipOutputStream.write("\n".getBytes()); // add separator
@@ -100,13 +103,15 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
     @Override
     @PreDestroy
     @CacheEvict(value = "lineProtocolBackupWriter", allEntries = true)
+    @Scheduled(fixedRateString = "${backup.gcs-flush-milliseconds}", initialDelay = 10000)
     public void flush() {
-        LOGGER.debug("Clearing cache");
+        log.debug("Clearing cache");
     }
 
     public static final RemovalListener removalListener = (RemovalListener<String, GZIPOutputStream>) (key, value, cause) -> {
         try {
             Assert.notNull(value, "Cache removed a null value");
+            log.info("Closing stream {}", value);
             value.finish();
             value.close();
         } catch (IOException e) {

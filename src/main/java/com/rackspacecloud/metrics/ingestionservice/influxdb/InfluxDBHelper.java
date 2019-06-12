@@ -8,13 +8,11 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBException;
 import org.influxdb.dto.Query;
 import org.influxdb.dto.QueryResult;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
@@ -25,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 public class InfluxDBHelper {
     /**
      * This map contains all of the InfluxDB related information for given tenantId and measurement
@@ -52,8 +51,6 @@ public class InfluxDBHelper {
     // to get the data first time. Once it has the routing information from routing service,
     // it caches it.
     Timer getInfluxDBInfoTimer;
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(InfluxDBHelper.class);
 
     public InfluxDBHelper(
             RestTemplate restTemplate, RouteProvider routeProvider, MeterRegistry registry,
@@ -125,7 +122,7 @@ public class InfluxDBHelper {
             if(databaseExists(databaseName, path)) {
                 // Check if retention policy exist
                 if(retentionPolicyExists(retPolicyName, databaseName, path)) {
-                    LOGGER.debug("Database {} and retention policy {} already exist", databaseName, retPolicyName);
+                    log.debug("Database {} and retention policy {} already exist", databaseName, retPolicyName);
                     influxDbInfoForTenant.put(rollupLevel, new InfluxDbInfoForRollupLevel(
                             path, databaseName, retPolicyName, retPolicy
                     ));
@@ -135,7 +132,7 @@ public class InfluxDBHelper {
                     if(rollupLevel.equalsIgnoreCase("full")) isDefault = true;
 
                     if(createRetentionPolicy(databaseName, path, retPolicy, retPolicyName, isDefault)) {
-                        LOGGER.info("Created new retention policy named [{}] for database [{}] in instance [{}]",
+                        log.info("Created new retention policy named [{}] for database [{}] in instance [{}]",
                                 retPolicyName, databaseName, path);
 
                         influxDbInfoForTenant.put(rollupLevel, new InfluxDbInfoForRollupLevel(
@@ -143,7 +140,7 @@ public class InfluxDBHelper {
                         ));
                     }
                     else {
-                        LOGGER.error("Failed to create retention policy {} on database {} in instance [{}]",
+                        log.error("Failed to create retention policy {} on database {} in instance [{}]",
                                 retPolicyName, databaseName, path);
                     }
                 }
@@ -151,7 +148,7 @@ public class InfluxDBHelper {
             else {
                 // TODO: store already processed database so that we don't call createDatabase blindly
                 if(createDatabase(databaseName, path, retPolicy, retPolicyName)) {
-                    LOGGER.info("Created new database [{}] with retention policy name [{}] on instance [{}]",
+                    log.info("Created new database [{}] with retention policy name [{}] on instance [{}]",
                             databaseName, retPolicyName, path);
 
                     influxDbInfoForTenant.put(rollupLevel, new InfluxDbInfoForRollupLevel(
@@ -159,7 +156,7 @@ public class InfluxDBHelper {
                     ));
                 }
                 else {
-                    LOGGER.error("Failed to create database [{}] with retention policy name [{}] on instance [{}]",
+                    log.error("Failed to create database [{}] with retention policy name [{}] on instance [{}]",
                             databaseName, retPolicyName, path);
                 }
             }
@@ -186,7 +183,7 @@ public class InfluxDBHelper {
         catch(Exception e) {
             String errMsg = String.format(
                     "Failed to get routes for tenantId [%s] and measurement [%s]", tenantId, measurement);
-            LOGGER.error(errMsg, e);
+            log.error(errMsg, e);
             throw new Exception(errMsg, e);
         }
 
@@ -201,7 +198,7 @@ public class InfluxDBHelper {
         QueryResult queryResult = influxDB.query(new Query(queryString, ""));
 
         if(queryResult.hasError()) {
-            LOGGER.error("Query result got error for query [{}]", queryString);
+            log.error("Query result got error for query [{}]", queryString);
             return false;
         }
 
@@ -231,7 +228,7 @@ public class InfluxDBHelper {
         QueryResult queryResult = influxDB.query(new Query(queryString, databaseName));
 
         if(queryResult.hasError()) {
-            LOGGER.error("Query result got error for query [{}]", queryString);
+            log.error("Query result got error for query [{}]", queryString);
             return false;
         }
 
@@ -313,7 +310,7 @@ public class InfluxDBHelper {
             backupService.writeToBackup(payload, baseUrl, databaseName, retPolicyName);
         }
         catch(InfluxDBException.PointsBeyondRetentionPolicyException ex) {
-            LOGGER.error("Write failed for the payload. baseURL: [{}], databaseName: [{}], ret-policy: [{}]",
+            log.error("Write failed for the payload. baseURL: [{}], databaseName: [{}], ret-policy: [{}]",
                     baseUrl, databaseName, retPolicyName);
             throw ex;
         }

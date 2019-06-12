@@ -1,8 +1,7 @@
 package com.rackspacecloud.metrics.ingestionservice.listeners;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.TopicPartition;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.support.Acknowledgment;
 
@@ -10,6 +9,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 public class UnifiedMetricsListener implements ConsumerSeekAware {
 
     protected long batchProcessedCount = 0;
@@ -17,11 +17,9 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
     // At the end of every 1000 messages, log this information
     protected static final int MESSAGE_PROCESS_REPORT_COUNT = 1000;
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(UnifiedMetricsListener.class);
-
     @Override
     public void registerSeekCallback(ConsumerSeekCallback consumerSeekCallback) {
-        LOGGER.info("Registering seekCallback at [{}]", Instant.now());
+        log.info("Registering seekCallback at [{}]", Instant.now());
     }
 
     protected void processPostInfluxDbIngestion(
@@ -29,19 +27,19 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
             final long offset, final Acknowledgment ack) {
 
         ack.acknowledge();
-        LOGGER.debug("Successfully processed partitionId:{}, offset:{} at {}", partitionId, offset, Instant.now());
+        log.debug("Successfully processed partitionId:{}, offset:{} at {}", partitionId, offset, Instant.now());
 
         if (batchProcessedCount % MESSAGE_PROCESS_REPORT_COUNT == 0) {
-            LOGGER.info("Processed {} batches.", batchProcessedCount);
+            log.info("Processed {} batches.", batchProcessedCount);
         }
 
-        LOGGER.debug("Done processing for records:{}", records);
+        log.debug("Done processing for records:{}", records);
 
         // Reset the counter
         if(batchProcessedCount == Long.MAX_VALUE) batchProcessedCount = 0;
 
         if(batchProcessedCount % MESSAGE_PROCESS_REPORT_COUNT == 0) {
-            LOGGER.info("Processed {} batches so far after start or reset...", getBatchProcessedCount());
+            log.info("Processed {} batches so far after start or reset...", getBatchProcessedCount());
         }
     }
 
@@ -51,14 +49,14 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
             String topic = topicPartition.topic();
             int partition = topicPartition.partition();
             long offset = map.get(topicPartition);
-            LOGGER.info("At Partition assignment for topic [{}], partition [{}], offset is at [{}] at time [{}]",
+            log.info("At Partition assignment for topic [{}], partition [{}], offset is at [{}] at time [{}]",
                     topic, partition, offset, Instant.now());
         }
     }
 
     @Override
     public void onIdleContainer(Map<TopicPartition, Long> map, ConsumerSeekCallback consumerSeekCallback) {
-        LOGGER.info("Listener container is idle at [{}]", Instant.now());
+        log.info("Listener container is idle at [{}]", Instant.now());
     }
 
     /**

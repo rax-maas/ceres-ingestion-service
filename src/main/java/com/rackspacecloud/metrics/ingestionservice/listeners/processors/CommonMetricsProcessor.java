@@ -2,13 +2,11 @@ package com.rackspacecloud.metrics.ingestionservice.listeners.processors;
 
 import com.rackspace.monplat.protocol.ExternalMetric;
 import com.rackspacecloud.metrics.ingestionservice.listeners.UnifiedMetricsListener;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
 
+@Slf4j
 public class CommonMetricsProcessor {
-    private static final Logger LOGGER = LoggerFactory.getLogger(CommonMetricsProcessor.class);
-
     private static final String ACCOUNT_TYPE = "accountType";
     private static final String ACCOUNT = "account";
     private static final String MONITORING_SYSTEM = "monitoringSystem";
@@ -43,7 +41,7 @@ public class CommonMetricsProcessor {
             String accountType, String account, String monitoringSystem, String collectionName) {
 
         if(!isValid(ACCOUNT_TYPE, accountType)) {
-            LOGGER.error("Invalid account type [{}] in the received record", accountType);
+            log.error("Invalid account type [{}] in the received record", accountType);
             throw new IllegalArgumentException(String.format("Invalid account type: [%s]", accountType));
         }
 
@@ -51,13 +49,13 @@ public class CommonMetricsProcessor {
             String oldName = account;
             account = UnifiedMetricsListener.replaceSpecialCharacters(account);
 
-            LOGGER.warn("Changed account from [{}] to [{}]", oldName, account);
+            log.warn("Changed account from [{}] to [{}]", oldName, account);
         }
 
         String tenantId = String.format("%s-%s", accountType, account);
 
         if(!isValid(MONITORING_SYSTEM, monitoringSystem)) {
-            LOGGER.error("Invalid monitoring system [{}] in the received record", monitoringSystem);
+            log.error("Invalid monitoring system [{}] in the received record", monitoringSystem);
             throw new IllegalArgumentException(String.format("Invalid monitoring system: [%s]", monitoringSystem));
         }
 
@@ -65,7 +63,7 @@ public class CommonMetricsProcessor {
             String oldCollectionName = collectionName;
             collectionName = UnifiedMetricsListener.replaceSpecialCharacters(collectionName);
 
-            LOGGER.warn("Changed collectionName from [{}] to [{}]", oldCollectionName, collectionName);
+            log.warn("Changed collectionName from [{}] to [{}]", oldCollectionName, collectionName);
         }
 
         String measurement = String.format("%s_%s", monitoringSystem, collectionName);
@@ -82,7 +80,7 @@ public class CommonMetricsProcessor {
     public static boolean isValid(String fieldName, CharSequence fieldValue) {
         if (!StringUtils.containsWhitespace(fieldValue)) return true;
 
-        LOGGER.error(
+        log.error(
                 "FieldValue [{}] is either empty or contains a whitespace for the field [{}]",
                 fieldValue, fieldName
         );

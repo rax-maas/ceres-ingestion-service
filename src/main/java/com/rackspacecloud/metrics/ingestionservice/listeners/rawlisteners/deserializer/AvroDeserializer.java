@@ -1,5 +1,6 @@
 package com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.deserializer;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumReader;
@@ -9,15 +10,12 @@ import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.avro.specific.SpecificRecordBase;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.serialization.Deserializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.util.Map;
 
+@Slf4j
 public class AvroDeserializer<T extends SpecificRecordBase> implements Deserializer<T> {
-    private static final Logger LOGGER = LoggerFactory.getLogger(AvroDeserializer.class);
-
     protected final Class<T> targetType;
 
     public AvroDeserializer(Class<T> targetType) {
@@ -31,7 +29,7 @@ public class AvroDeserializer<T extends SpecificRecordBase> implements Deseriali
     public T deserialize(String topicName, byte[] data) {
         if(data == null) return null;
 
-        LOGGER.debug("Data is [{}]", new String(data));
+        log.debug("Data is [{}]", new String(data));
 
         try {
             ByteArrayInputStream inputStream = new ByteArrayInputStream(data);
@@ -40,13 +38,13 @@ public class AvroDeserializer<T extends SpecificRecordBase> implements Deseriali
             Decoder decoder = DecoderFactory.get().jsonDecoder(schema, inputStream);
 
             T result = (T) datumReader.read(null, decoder);
-            LOGGER.debug("Deserialized data: [{}]", result);
+            log.debug("Deserialized data: [{}]", result);
 
             return result;
         } catch (Exception e) {
             String errorMessage = String.format("Deserialization failed for topic [%s] with exception message: [%s]",
                     topicName, e.getMessage());
-            LOGGER.error("{} Data in question is [{}]", errorMessage, new String(data));
+            log.error("{} Data in question is [{}]", errorMessage, new String(data));
             throw new SerializationException(errorMessage, e);
         }
     }
