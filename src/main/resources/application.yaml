@@ -48,6 +48,7 @@ backup:
   gcs-backup-bucket: "ceres-backup-dev"
   gcs-timeout: 30m
   gcs-flush-milliseconds: 3600000
+  always-flush: true
 ---
 spring:
   profiles: development
@@ -128,6 +129,7 @@ backup:
   gcs-backup-bucket: "ceres-backup-dev"
   gcs-timeout: 30m
   gcs-flush-milliseconds: 3600000
+  always-flush: true
 ---
 spring:
   profiles: production
@@ -225,3 +227,4 @@ backup:
   gcs-backup-bucket: "ceres-backup-dev"
   gcs-timeout: 30m
   gcs-flush-milliseconds: 3600000
+  always-flush: true # We may want to disable this for performance reasons
