@@ -17,6 +17,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.io.IOException;
+import java.net.URL;
 import java.util.zip.GZIPOutputStream;
 
 @RunWith(SpringRunner.class)
@@ -61,7 +62,7 @@ public class GCLineProtocolBackupServiceIntegrationTests {
                         "for a Google service account, but is " + value,
                         value != null);
 
-        backupService.writeToBackup("testPayload11 1557777267",
+        backupService.writeToBackup("testPayload11 1557777267", new URL("https://test-influx.com:8080"),
                 "test-db", "test-policy");
 
         backupService.flush();
