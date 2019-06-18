@@ -61,7 +61,7 @@ public class GCLineProtocolBackupServiceIntegrationTests {
                         "for a Google service account, but is " + value,
                         value != null);
 
-        backupService.writeToBackup("testPayload11 1557777267", "test-instance",
+        backupService.writeToBackup("testPayload11 1557777267",
                 "test-db", "test-policy");
 
         backupService.flush();
