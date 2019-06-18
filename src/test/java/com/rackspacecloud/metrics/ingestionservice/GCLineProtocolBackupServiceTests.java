@@ -19,6 +19,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.channels.Channels;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -58,10 +61,10 @@ public class GCLineProtocolBackupServiceTests {
     }
 
     @Test
-    public void backupServiceGetProperName() {
+    public void backupServiceGetProperName() throws MalformedURLException, UnsupportedEncodingException {
         assertThat(GCLineProtocolBackupService.getBackupLocation("testPayload 1557777267",
-                "myDB", "1440h"))
-                        .matches("myDB/1440h/20190513");
+                new URL("https://influx-test.com:8080"), "myDB", "1440h"))
+                        .matches("influx-test.com/myDB/1440h/20190513");
     }
 
     @Test
@@ -118,23 +121,30 @@ public class GCLineProtocolBackupServiceTests {
 
     // This test will fail when the cache is not working properly, i.e. re-issuing multiple files instead of caching.
     @Test
-    public void testServiceTwoDbInstances() throws IOException {
+    public void testServiceTwoDbInstances() throws IOException, InterruptedException {
         backupService.writeToBackup("testPayload11 1557777267",
+                new URL("https://influx-test1.com:8080"),
                 "myDB1", "1440h");
         backupService.writeToBackup("testPayload12 1557777268",
+                new URL("https://influx-test1.com:8080"),
                 "myDB1", "1440h");
         backupService.writeToBackup("testPayload13 1557777269",
+                new URL("https://influx-test1.com:8080"),
                 "myDB1", "1440h");
 
         backupService.writeToBackup("testPayload21 1557777267",
+                new URL("https://influx-test2.com:8080"),
                 "myDB2", "1440h");
         backupService.writeToBackup("testPayload22 1557777268",
+                new URL("https://influx-test2.com:8080"),
                 "myDB2", "1440h");
         backupService.writeToBackup("testPayload23 1557777269",
+                new URL("https://influx-test2.com:8080"),
                 "myDB2", "1440h");
 
         backupService.flush();
-        
+
+        TimeUnit.SECONDS.sleep(1);
 
         Iterator<Blob> iterator = storage.list(backupProperties.getGcsBackupBucket()).getValues().iterator();
 

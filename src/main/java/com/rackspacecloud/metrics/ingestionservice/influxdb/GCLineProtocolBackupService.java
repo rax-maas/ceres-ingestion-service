@@ -18,6 +18,10 @@ import org.springframework.util.Assert;
 import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.channels.Channels;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -88,17 +92,20 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
     }
 
     @Override
-    public void writeToBackup(String payload, String database, String retentionPolicy)
+    public void writeToBackup(String payload, URL instanceURL, String database, String retentionPolicy)
             throws IOException {
         Assert.hasText(payload, "payload must be a line protocol payload");
         Assert.hasText(database, "database name must not be missing");
         Assert.hasText(retentionPolicy, "retention policy name must not be missing");
-        GZIPOutputStream gzipOutputStream = self.getBackupStream(getBackupLocation(payload, database, retentionPolicy));
+        Assert.hasText(instanceURL.getHost(), "database hostname must be specified in the instance URL");
+        GZIPOutputStream gzipOutputStream = self.getBackupStream(getBackupLocation(payload, instanceURL,
+                database, retentionPolicy));
         Assert.notNull(gzipOutputStream, "Cache provided a null cloud stream");
-        log.info("Writing to ({},{}) using stream {}: {}", database, retentionPolicy, gzipOutputStream, payload);
+        log.info("Writing to ({}, {},{}) using stream {}: {}", instanceURL.getHost(), database, retentionPolicy,
+                gzipOutputStream, payload);
         synchronized(gzipOutputStream) {
             gzipOutputStream.write(payload.getBytes());
-            gzipOutputStream.write("\n".getBytes()); // add separator
+            gzipOutputStream.write("\n".getBytes()); // add line separator
             if(backupProperties.isAlwaysFlush()) gzipOutputStream.flush();
         }
     }
@@ -133,16 +140,19 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
 
     /**
      * @param payload         The payload; used to extract timestamp
+     * @param instanceURL     The URL of the influxdb instance
      * @param database        The database this payload would be going to
      * @param retentionPolicy The retention policy this payload would be written
      *                        under
      * @return the name of the new blob or file
      */
-    public static String getBackupLocation(String payload, String database, String retentionPolicy) {
+    public static String getBackupLocation(String payload, URL instanceURL, String database, String retentionPolicy) throws UnsupportedEncodingException {
         Assert.hasText(payload, "payload must be a line protocol payload");
         Assert.hasText(database, "database name must not be missing");
         Assert.hasText(retentionPolicy, "retention policy name must not be missing");
-        return database + "/" + retentionPolicy + "/"
+        return URLEncoder.encode(instanceURL.getHost(), "UTF-8") + "/" +
+                URLEncoder.encode(database, "UTF-8") + "/" +
+                URLEncoder.encode(retentionPolicy, "UTF-8") + "/"
                 + dateBucketFormat.format(Instant.ofEpochSecond(parseTimestampFromPayload(payload)));
     }
 }

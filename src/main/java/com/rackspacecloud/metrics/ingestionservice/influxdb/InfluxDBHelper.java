@@ -15,6 +15,7 @@ import org.influxdb.dto.Query;
 import org.influxdb.dto.QueryResult;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -307,7 +308,7 @@ public class InfluxDBHelper {
         long startTime = System.currentTimeMillis();
         try {
             influxDB.write(databaseName, retPolicyName, InfluxDB.ConsistencyLevel.ONE, TimeUnit.SECONDS, payload);
-            backupService.writeToBackup(payload, databaseName, retPolicyName);
+            backupService.writeToBackup(payload, new URL(baseUrl), databaseName, retPolicyName);
         }
         catch(InfluxDBException.PointsBeyondRetentionPolicyException ex) {
             log.error("Write failed for the payload. baseURL: [{}], databaseName: [{}], ret-policy: [{}]",
