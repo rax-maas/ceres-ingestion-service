@@ -23,6 +23,7 @@ import java.nio.channels.Channels;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -58,9 +59,9 @@ public class GCLineProtocolBackupServiceTests {
 
     @Test
     public void backupServiceGetProperName() {
-        assertThat(GCLineProtocolBackupService.getBackupLocation("testPayload 1557777267", "db1.ceres.google.com",
+        assertThat(GCLineProtocolBackupService.getBackupLocation("testPayload 1557777267",
                 "myDB", "1440h"))
-                        .matches("db1\\.ceres\\.google\\.com/myDB/1440h/20190513");
+                        .matches("myDB/1440h/20190513");
     }
 
     @Test
@@ -104,10 +105,12 @@ public class GCLineProtocolBackupServiceTests {
     }
 
     @Test
-    public void testCacheClear() throws IOException {
+    public void testCacheClear() throws IOException, InterruptedException {
         GZIPOutputStream outputStream1 = backupService.getBackupStream("testFile1");
         outputStream1.write("test1".getBytes());
         backupService.flush();
+
+        TimeUnit.SECONDS.sleep(1);
         
         assertThat(IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(backupProperties.getGcsBackupBucket(),
                 storage.list(backupProperties.getGcsBackupBucket()).getValues().iterator().next().getName()))))).isEqualTo("test1");
@@ -116,19 +119,19 @@ public class GCLineProtocolBackupServiceTests {
     // This test will fail when the cache is not working properly, i.e. re-issuing multiple files instead of caching.
     @Test
     public void testServiceTwoDbInstances() throws IOException {
-        backupService.writeToBackup("testPayload11 1557777267", "db1.ceres.google.com",
-                "myDB", "1440h");
-        backupService.writeToBackup("testPayload12 1557777268", "db1.ceres.google.com",
-                "myDB", "1440h");
-        backupService.writeToBackup("testPayload13 1557777269", "db1.ceres.google.com",
-                "myDB", "1440h");
+        backupService.writeToBackup("testPayload11 1557777267",
+                "myDB1", "1440h");
+        backupService.writeToBackup("testPayload12 1557777268",
+                "myDB1", "1440h");
+        backupService.writeToBackup("testPayload13 1557777269",
+                "myDB1", "1440h");
 
-        backupService.writeToBackup("testPayload21 1557777267", "db2.ceres.google.com",
-                "myDB", "1440h");
-        backupService.writeToBackup("testPayload22 1557777268", "db2.ceres.google.com",
-                "myDB", "1440h");
-        backupService.writeToBackup("testPayload23 1557777269", "db2.ceres.google.com",
-                "myDB", "1440h");
+        backupService.writeToBackup("testPayload21 1557777267",
+                "myDB2", "1440h");
+        backupService.writeToBackup("testPayload22 1557777268",
+                "myDB2", "1440h");
+        backupService.writeToBackup("testPayload23 1557777269",
+                "myDB2", "1440h");
 
         backupService.flush();
         

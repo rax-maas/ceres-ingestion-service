@@ -307,7 +307,7 @@ public class InfluxDBHelper {
         long startTime = System.currentTimeMillis();
         try {
             influxDB.write(databaseName, retPolicyName, InfluxDB.ConsistencyLevel.ONE, TimeUnit.SECONDS, payload);
-            backupService.writeToBackup(payload, baseUrl, databaseName, retPolicyName);
+            backupService.writeToBackup(payload, databaseName, retPolicyName);
         }
         catch(InfluxDBException.PointsBeyondRetentionPolicyException ex) {
             log.error("Write failed for the payload. baseURL: [{}], databaseName: [{}], ret-policy: [{}]",

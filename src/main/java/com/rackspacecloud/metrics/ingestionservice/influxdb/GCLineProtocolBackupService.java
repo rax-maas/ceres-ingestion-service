@@ -44,6 +44,8 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
     // instead of the GCLineProtocolBackupService object
     private LineProtocolBackupService self;
 
+    private BackupProperties backupProperties;
+
     @Resource
     public void setLineProtocolBackupService(LineProtocolBackupService self) {
         this.self = self;
@@ -61,11 +63,12 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
         Assert.notNull(backupProperties.getGcsBackupBucket(), "The output bucket must not be null");
         this.storage = storage;
         this.cloudOutputBucket = backupProperties.getGcsBackupBucket();
+        this.backupProperties = backupProperties;
     }
 
     /**
      * We want data to be stored in the following format: /[profile-specific
-     * bucket]/[instance name]/[database name]/[retention policy
+     * bucket]/[database name]/[retention policy
      * name]/[YYYYMMDD]/[UUID of file].gz
      *
      * File is line-protocol, gzipped, size may require some testing
@@ -85,18 +88,18 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
     }
 
     @Override
-    public void writeToBackup(String payload, String instance, String database, String retentionPolicy)
+    public void writeToBackup(String payload, String database, String retentionPolicy)
             throws IOException {
         Assert.hasText(payload, "payload must be a line protocol payload");
-        Assert.hasText(instance, "instance must be a valid database instance");
         Assert.hasText(database, "database name must not be missing");
         Assert.hasText(retentionPolicy, "retention policy name must not be missing");
-        GZIPOutputStream gzipOutputStream = self.getBackupStream(getBackupLocation(payload, instance, database, retentionPolicy));
+        GZIPOutputStream gzipOutputStream = self.getBackupStream(getBackupLocation(payload, database, retentionPolicy));
         Assert.notNull(gzipOutputStream, "Cache provided a null cloud stream");
-        log.info("Writing to ({},{},{}) using stream {}: {}", instance, database, retentionPolicy, gzipOutputStream, payload);
+        log.info("Writing to ({},{}) using stream {}: {}", database, retentionPolicy, gzipOutputStream, payload);
         synchronized(gzipOutputStream) {
             gzipOutputStream.write(payload.getBytes());
             gzipOutputStream.write("\n".getBytes()); // add separator
+            if(backupProperties.isAlwaysFlush()) gzipOutputStream.flush();
         }
     }
 
@@ -130,18 +133,16 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
 
     /**
      * @param payload         The payload; used to extract timestamp
-     * @param instance        The instance this payload would be going to
      * @param database        The database this payload would be going to
      * @param retentionPolicy The retention policy this payload would be written
      *                        under
      * @return the name of the new blob or file
      */
-    public static String getBackupLocation(String payload, String instance, String database, String retentionPolicy) {
+    public static String getBackupLocation(String payload, String database, String retentionPolicy) {
         Assert.hasText(payload, "payload must be a line protocol payload");
-        Assert.hasText(instance, "instance must be a valid database instance");
         Assert.hasText(database, "database name must not be missing");
         Assert.hasText(retentionPolicy, "retention policy name must not be missing");
-        return instance + "/" + database + "/" + retentionPolicy + "/"
+        return database + "/" + retentionPolicy + "/"
                 + dateBucketFormat.format(Instant.ofEpochSecond(parseTimestampFromPayload(payload)));
     }
 }

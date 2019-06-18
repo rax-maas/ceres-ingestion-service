@@ -16,6 +16,8 @@ public class BackupProperties {
     private String gcsBackupBucket;
     @NotNull(message = "gcs-timeout duration should be configured, but is not")
     private Duration gcsTimeout;
-    @NotNull(message = "gcs-flush duration should be configured, but is not")
+    // This clears the entire cache on a timer    
     private long gcsFlushMilliseconds;
+    // Force flush stream after each write if true    
+    private boolean alwaysFlush;
 }
