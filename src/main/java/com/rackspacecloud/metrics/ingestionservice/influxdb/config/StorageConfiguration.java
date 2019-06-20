@@ -23,7 +23,7 @@ public class StorageConfiguration {
     }
 
     @Bean
-    @Profile({"test", "dev"})
+    @Profile({"test", "development"})
     public Storage memStorage(){
         // In-memory storage for testing
         log.info("Configuring local storage for testing");
