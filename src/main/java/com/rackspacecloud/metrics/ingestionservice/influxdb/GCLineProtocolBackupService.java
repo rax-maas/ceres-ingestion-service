@@ -80,15 +80,21 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
      * @param location the location within the bucket (directory) where blobs will be written to
      * @return the cached reference to the gzip output stream for that blob
      */
-    @Cacheable(cacheNames = "lineProtocolBackupWriter")
-    public GZIPOutputStream getBackupStream(String location) throws IOException {
+    @Cacheable(cacheNames = "lineProtocolBackupWriter", key="location")
+    public GZIPOutputStream getBackupStream(String location, String database, String retentionPolicy) throws IOException {
         Assert.hasText(location, "location must contain text");
         String fileName = location + "/" + UUID.randomUUID().toString() + ".gz";
         BlobId blobId = BlobId.of(cloudOutputBucket, fileName);
         BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType("application/gzip").build();
         // enable flushing the compressor
-        log.info("Returning a new backup stream for {} in bucket {}", blobInfo, cloudOutputBucket);
-        return new GZIPOutputStream(Channels.newOutputStream(storage.writer(blobInfo)), true);
+        GZIPOutputStream gzipOutputStream = new GZIPOutputStream(Channels.newOutputStream(storage.writer(blobInfo)), true);
+        log.info("Returning a new backup stream {} for {} in bucket {}", gzipOutputStream, blobInfo, cloudOutputBucket);
+
+        // We need to add a header specifying where to import to make restore easier
+        gzipOutputStream.write(("# DML\n" +
+                "# CONTEXT-DATABASE: " + database + "\n" +
+                "# CONTEXT-RETENTION-POLICY: " + retentionPolicy + "\n").getBytes());
+        return gzipOutputStream;
     }
 
     @Override
@@ -98,8 +104,9 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
         Assert.hasText(database, "database name must not be missing");
         Assert.hasText(retentionPolicy, "retention policy name must not be missing");
         Assert.hasText(instanceURL.getHost(), "database hostname must be specified in the instance URL");
-        GZIPOutputStream gzipOutputStream = self.getBackupStream(getBackupLocation(payload, instanceURL,
-                database, retentionPolicy));
+        GZIPOutputStream gzipOutputStream = self.getBackupStream(
+                getBackupLocation(payload, instanceURL, database, retentionPolicy),
+                database, retentionPolicy);
         Assert.notNull(gzipOutputStream, "Cache provided a null cloud stream");
         log.info("Writing to ({}, {},{}) using stream {}: {}", instanceURL.getHost(), database, retentionPolicy,
                 gzipOutputStream, payload);
