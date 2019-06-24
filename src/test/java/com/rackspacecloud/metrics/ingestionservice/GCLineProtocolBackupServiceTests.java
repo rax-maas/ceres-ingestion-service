@@ -23,6 +23,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.channels.Channels;
+import java.sql.Time;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -69,29 +70,29 @@ public class GCLineProtocolBackupServiceTests {
 
     @Test
     public void backupServiceGetCachedStream() throws IOException {
-        GZIPOutputStream outputStream1 = backupService.getBackupStream("testFile1");
-        GZIPOutputStream outputStream2 = backupService.getBackupStream("testFile1");
-        GZIPOutputStream outputStream3 = backupService.getBackupStream("testFile1");
+        GZIPOutputStream outputStream1 = backupService.getBackupStream("testFile1", "db0", "rp0");
+        GZIPOutputStream outputStream2 = backupService.getBackupStream("testFile1", "db0", "rp0");
+        GZIPOutputStream outputStream3 = backupService.getBackupStream("testFile1", "db0", "rp0");
         assertThat(outputStream1).isEqualTo(outputStream2);
         assertThat(outputStream2).isEqualTo(outputStream3);
     }
 
     @Test
     public void backupServiceGetCachedStream2() throws IOException {
-        GZIPOutputStream outputStream1 = backupService.getBackupStream("testFile1");
-        GZIPOutputStream outputStream2 = backupService.getBackupStream("testFile1");
-        GZIPOutputStream outputStream3 = backupService.getBackupStream("testFile2");
+        GZIPOutputStream outputStream1 = backupService.getBackupStream("testFile1", "db0", "rp0");
+        GZIPOutputStream outputStream2 = backupService.getBackupStream("testFile1", "db0", "rp0");
+        GZIPOutputStream outputStream3 = backupService.getBackupStream("testFile2", "db0", "rp0");
         assertThat(outputStream1).isEqualTo(outputStream2);
         assertThat(outputStream2).isNotEqualTo(outputStream3);
     }
 
     @Test
     public void checkFile() throws IOException {
-        GZIPOutputStream outputStream1 = backupService.getBackupStream("testFile1");
+        GZIPOutputStream outputStream1 = backupService.getBackupStream("testFile1", "db0", "rp0");
         outputStream1.write("test1".getBytes());
         outputStream1.close();
         assertThat(IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(backupProperties.getGcsBackupBucket(),
-                storage.list(backupProperties.getGcsBackupBucket()).getValues().iterator().next().getName()))))).isEqualTo("test1");
+                storage.list(backupProperties.getGcsBackupBucket()).getValues().iterator().next().getName()))))).contains("test1");
     }
 
     @Test
@@ -101,7 +102,7 @@ public class GCLineProtocolBackupServiceTests {
 
     @Test(expected = StorageException.class)
     public void testWriteAndRead() throws IOException {
-        GZIPOutputStream outputStream1 = backupService.getBackupStream("testFile1");
+        GZIPOutputStream outputStream1 = backupService.getBackupStream("testFile1", "db0", "rp0");
         outputStream1.write("test1".getBytes());
         IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(backupProperties.getGcsBackupBucket(),
                 storage.list(backupProperties.getGcsBackupBucket()).getValues().iterator().next().getName()))));
@@ -109,14 +110,14 @@ public class GCLineProtocolBackupServiceTests {
 
     @Test
     public void testCacheClear() throws IOException, InterruptedException {
-        GZIPOutputStream outputStream1 = backupService.getBackupStream("testFile1");
+        GZIPOutputStream outputStream1 = backupService.getBackupStream("testFile1", "db0", "rp0");
         outputStream1.write("test1".getBytes());
         backupService.flush();
 
         TimeUnit.SECONDS.sleep(1);
         
         assertThat(IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(backupProperties.getGcsBackupBucket(),
-                storage.list(backupProperties.getGcsBackupBucket()).getValues().iterator().next().getName()))))).isEqualTo("test1");
+                storage.list(backupProperties.getGcsBackupBucket()).getValues().iterator().next().getName()))))).contains("test1");
     }
 
     // This test will fail when the cache is not working properly, i.e. re-issuing multiple files instead of caching.
@@ -155,9 +156,18 @@ public class GCLineProtocolBackupServiceTests {
 
         String blob1 = blobList.get(0).getName();
         String blob2 = blobList.get(1).getName();
+
+        TimeUnit.SECONDS.sleep(1);
+
         assertThat(IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(backupProperties.getGcsBackupBucket(), blob1)))))
-                .matches("testPayload[12]1 1557777267\ntestPayload[12]2 1557777268\ntestPayload[12]3 1557777269\n");
+                .matches("# DML\n" +
+                        "# CONTEXT-DATABASE: myDB1\n" +
+                        "# CONTEXT-RETENTION-POLICY: 1440h\n" +
+                        "testPayload[12]1 1557777267\ntestPayload[12]2 1557777268\ntestPayload[12]3 1557777269\n");
         assertThat(IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(backupProperties.getGcsBackupBucket(), blob2)))))
-                .matches("testPayload[12]1 1557777267\ntestPayload[12]2 1557777268\ntestPayload[12]3 1557777269\n");
+                .matches("# DML\n" +
+                        "# CONTEXT-DATABASE: myDB2\n" +
+                        "# CONTEXT-RETENTION-POLICY: 1440h\n" +
+                        "testPayload[12]1 1557777267\ntestPayload[12]2 1557777268\ntestPayload[12]3 1557777269\n");
     }
 }

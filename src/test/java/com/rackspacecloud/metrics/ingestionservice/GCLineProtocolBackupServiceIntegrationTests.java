@@ -49,7 +49,7 @@ public class GCLineProtocolBackupServiceIntegrationTests {
 
     @Test
     public void testSimpleBackupIntegration() throws IOException {
-        GZIPOutputStream outputStream = backupService.getBackupStream("simple-test");
+        GZIPOutputStream outputStream = backupService.getBackupStream("simple-test", "db0", "rp0");
         outputStream.write("test".getBytes());
         outputStream.close();
     }

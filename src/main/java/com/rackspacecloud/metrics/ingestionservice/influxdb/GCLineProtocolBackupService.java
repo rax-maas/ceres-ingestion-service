@@ -80,7 +80,7 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
      * @param location the location within the bucket (directory) where blobs will be written to
      * @return the cached reference to the gzip output stream for that blob
      */
-    @Cacheable(cacheNames = "lineProtocolBackupWriter", key="location")
+    @Cacheable(cacheNames = "lineProtocolBackupWriter", key="#location")
     public GZIPOutputStream getBackupStream(String location, String database, String retentionPolicy) throws IOException {
         Assert.hasText(location, "location must contain text");
         String fileName = location + "/" + UUID.randomUUID().toString() + ".gz";
