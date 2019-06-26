@@ -14,7 +14,7 @@ public interface LineProtocolBackupService {
      * @return A backup stream where line protocol lines can be written to
      * @throws IOException
      */
-    GZIPOutputStream getBackupStream(String location) throws IOException;
+    GZIPOutputStream getBackupStream(String location, String database, String retentionPolicy) throws IOException;
 
     /**
      * A helper method for accessing the backup service
