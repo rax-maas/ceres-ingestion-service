@@ -53,7 +53,9 @@
         "symbols": [
           "MAAS",
           "UIM",
-          "SALUS"
+          "SALUS",
+          "SCOM",
+          "ZENOSS"
         ]
       }
     },
