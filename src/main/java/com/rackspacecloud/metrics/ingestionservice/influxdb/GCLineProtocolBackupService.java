@@ -88,7 +88,7 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
         BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType("application/gzip").build();
         // enable flushing the compressor
         GZIPOutputStream gzipOutputStream = new GZIPOutputStream(Channels.newOutputStream(storage.writer(blobInfo)), true);
-        log.info("Returning a new backup stream {} for {} in bucket {}", gzipOutputStream, blobInfo, cloudOutputBucket);
+        log.debug("Returning a new backup stream {} for {} in bucket {}", gzipOutputStream, blobInfo, cloudOutputBucket);
 
         // We need to add a header specifying where to import to make restore easier
         gzipOutputStream.write(("# DML\n" +
@@ -108,7 +108,7 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
                 getBackupLocation(payload, instanceURL, database, retentionPolicy),
                 database, retentionPolicy);
         Assert.notNull(gzipOutputStream, "Cache provided a null cloud stream");
-        log.info("Writing to ({}, {},{}) using stream {}: {}", instanceURL.getHost(), database, retentionPolicy,
+        log.debug("Writing to ({}, {},{}) using stream {}: {}", instanceURL.getHost(), database, retentionPolicy,
                 gzipOutputStream, payload);
         synchronized(gzipOutputStream) {
             gzipOutputStream.write(payload.getBytes());
@@ -128,7 +128,7 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
     public static final RemovalListener removalListener = (RemovalListener<String, GZIPOutputStream>) (key, value, cause) -> {
         try {
             Assert.notNull(value, "Cache removed a null value");
-            log.info("Closing stream {}", value);
+            log.debug("Closing stream {}", value);
             value.finish();
             value.close();
         } catch (IOException e) {

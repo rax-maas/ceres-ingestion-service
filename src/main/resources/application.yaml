@@ -101,10 +101,10 @@ influxdb:
 
 logging:
   level:
-    com.rackspacecloud: info
+    com.rackspacecloud: debug
     org.springframework:
-      web: info
-      kafka.listener: info
+      web: debug
+      kafka.listener: debug
     okhttp3: warn
 
 management:

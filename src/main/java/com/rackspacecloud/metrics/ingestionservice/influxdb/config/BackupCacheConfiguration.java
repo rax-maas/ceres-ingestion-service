@@ -27,7 +27,7 @@ public class BackupCacheConfiguration {
                         .expireAfterAccess(backupProperties.getGcsTimeout())
                         .removalListener(GCLineProtocolBackupService.removalListener)
                         );
-        log.info("Configuring caffeine backup cache with timeout of {}", backupProperties.getGcsTimeout());
+        log.debug("Configuring caffeine backup cache with timeout of {}", backupProperties.getGcsTimeout());
         return ccm;
     }
 }
