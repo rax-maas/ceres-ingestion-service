@@ -157,6 +157,12 @@ public class GCLineProtocolBackupServiceTests {
         String blob1 = blobList.get(0).getName();
         String blob2 = blobList.get(1).getName();
 
+        if (blob1.contains("myDB2")) {
+            String blob = blob1;
+            blob1 = blob2;
+            blob2 = blob;
+        }
+
         TimeUnit.SECONDS.sleep(1);
 
         assertThat(IOUtils.toString(new GZIPInputStream(Channels.newInputStream(storage.reader(backupProperties.getGcsBackupBucket(), blob1)))))
