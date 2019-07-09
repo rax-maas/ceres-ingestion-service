@@ -45,6 +45,7 @@ influxdb:
   write-flush-duration-ms-limit: 100
 
 backup:
+  # Not using environment variable for this bucket, change as needed
   gcs-backup-bucket: "ceres-backup-dev"
   gcs-timeout: 30m
   gcs-flush-milliseconds: 3600000
@@ -126,7 +127,7 @@ management:
         enabled: false
 
 backup:
-  gcs-backup-bucket: "ceres-backup-dev"
+  gcs-backup-bucket: ${GCS_BACKUP_BUCKET}
   gcs-timeout: 30m
   gcs-flush-milliseconds: 3600000
   always-flush: true
@@ -224,7 +225,7 @@ management:
 #        num-threads: 10
 
 backup:
-  gcs-backup-bucket: "ceres-backup-dev"
+  gcs-backup-bucket: ${GCS_BACKUP_BUCKET}
   gcs-timeout: 30m
   gcs-flush-milliseconds: 3600000
   always-flush: true # We may want to disable this for performance reasons
