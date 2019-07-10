@@ -18,7 +18,7 @@ public class StorageConfiguration {
     @Profile({"production"})
     public Storage gcStorage(){
         // This should grab the file pointed to by the GOOGLE_APPLICATION_CREDENTIALS environment variable
-        log.debug("Configuring google cloud storage: {}", StorageOptions.getDefaultInstance().getService());
+        log.info("Configuring google cloud storage: {}", StorageOptions.getDefaultInstance().getService());
         return StorageOptions.getDefaultInstance().getService();
     }
 

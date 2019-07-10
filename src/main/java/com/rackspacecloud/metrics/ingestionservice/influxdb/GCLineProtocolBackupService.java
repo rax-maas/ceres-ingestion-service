@@ -41,8 +41,6 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
             .withZone(ZoneOffset.UTC);
     // The underlying blob storage. Dev/test will uses in-memory storage
     private final Storage storage;
-    // The bucket where blobs will go
-    private final String cloudOutputBucket;
 
     // Internal methods of this class attempt to talk to the Cache proxy
     // instead of the GCLineProtocolBackupService object
@@ -66,7 +64,6 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
         // TODO: remove gcs prefix to make abstraction cleaner
         Assert.notNull(backupProperties.getGcsBackupBucket(), "The output bucket must not be null");
         this.storage = storage;
-        this.cloudOutputBucket = backupProperties.getGcsBackupBucket();
         this.backupProperties = backupProperties;
     }
 
@@ -84,11 +81,13 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
     public GZIPOutputStream getBackupStream(String location, String database, String retentionPolicy) throws IOException {
         Assert.hasText(location, "location must contain text");
         String fileName = location + "/" + UUID.randomUUID().toString() + ".gz";
-        BlobId blobId = BlobId.of(cloudOutputBucket, fileName);
+        BlobId blobId = BlobId.of(backupProperties.getGcsBackupBucket(), fileName);
         BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType("application/gzip").build();
         // enable flushing the compressor
         GZIPOutputStream gzipOutputStream = new GZIPOutputStream(Channels.newOutputStream(storage.writer(blobInfo)), true);
-        log.debug("Returning a new backup stream {} for {} in bucket {}", gzipOutputStream, blobInfo, cloudOutputBucket);
+        // Only logs when a new blob is being generated
+        log.info("Returning a new backup stream {} for {} in bucket {}",
+                gzipOutputStream, blobInfo, backupProperties.getGcsBackupBucket());
 
         // We need to add a header specifying where to import to make restore easier
         gzipOutputStream.write(("# DML\n" +
@@ -128,7 +127,7 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
     public static final RemovalListener removalListener = (RemovalListener<String, GZIPOutputStream>) (key, value, cause) -> {
         try {
             Assert.notNull(value, "Cache removed a null value");
-            log.debug("Closing stream {}", value);
+            log.info("Closing stream {} for {}: {}", value, key, cause);
             value.finish();
             value.close();
         } catch (IOException e) {

@@ -302,7 +302,6 @@ public class InfluxDBHelper {
         String databaseName = influxDbInfoForRollupLevel.getDatabaseName();
         String retPolicyName = influxDbInfoForRollupLevel.getRetentionPolicyName();
 
-
         InfluxDB influxDB = getInfluxDBClient(baseUrl);
 
         long startTime = System.currentTimeMillis();
