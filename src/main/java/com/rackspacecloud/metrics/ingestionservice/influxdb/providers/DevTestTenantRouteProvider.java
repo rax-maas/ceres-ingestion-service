@@ -8,10 +8,14 @@ public class DevTestTenantRouteProvider implements RouteProvider {
     private String tenantRoutingServiceUrl;
 
     @Override
-    public TenantRoutes getRoute(String tenantId, String measurement, RestTemplate restTemplate) {
+    public TenantRoutes getRoute(String tenantId, String measurement, RestTemplate restTemplate) throws Exception {
         String requestUrl = String.format("%s/%s/%s", tenantRoutingServiceUrl, tenantId, measurement);
 
-        //TODO: Work on any exception handling if restTemplate throws exception
-        return restTemplate.getForObject(requestUrl, TenantRoutes.class);
+        try {
+            return restTemplate.getForObject(requestUrl, TenantRoutes.class);
+        }
+        catch (Exception e) {
+            throw new Exception(String.format("Exception thrown for requestUrl [%s]", requestUrl), e);
+        }
     }
 }
