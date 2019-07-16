@@ -46,7 +46,6 @@ steps:
     - 'SHORT_SHA=$SHORT_SHA'
     - 'BRANCH_NAME=$BRANCH_NAME'
     args:
-    - "-X"
     - compile
     - jib:build
     - "-Dmaven.test.skip=true"

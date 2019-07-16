@@ -21,9 +21,9 @@ steps:
     - name: user.home
       path: /root
 
-  - id: VERIFY
+  - id: TESTING
     name: 'gcr.io/cloud-builders/mvn'
-    args: ['verify']
+    args: ['test']
     volumes:
     - name: user.home
       path: /root
@@ -31,7 +31,7 @@ steps:
   # Saves the files to the GCS cache.
   - id: PUSH_UP_CACHE
     waitFor:
-    - VERIFY
+    - TESTING
     name: gcr.io/cloud-builders/gsutil
     dir: /root
     entrypoint: bash
