@@ -179,7 +179,7 @@ kafka:
     source-1440m: unified.metrics.json.1440m
 
   consumer:
-    group: influxdb-consumer-group
+    group: ${KAFKA_CONSUMER_GROUP}
 
 tenant-routing-service:
   url: ${TENANT_ROUTING_SERVICE_URL}
