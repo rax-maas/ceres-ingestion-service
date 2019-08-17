@@ -44,6 +44,7 @@ public class InfluxDBHelper {
     private InfluxDBFactory influxDBFactory;
     private int numberOfPointsInAWriteBatch;
     private int writeFlushDurationMsLimit;
+    private int jitterDuration;
     private ConcurrentMap<String, InfluxDB> urlInfluxDBInstanceMap;
     Timer influxDBWriteTimer;
     private LineProtocolBackupService backupService;
@@ -57,7 +58,7 @@ public class InfluxDBHelper {
             RestTemplate restTemplate, RouteProvider routeProvider, MeterRegistry registry,
             InfluxDBFactory influxDBFactory,
             LineProtocolBackupService backupService,
-            int numberOfPointsInAWriteBatch, int writeFlushDurationMsLimit){
+            int numberOfPointsInAWriteBatch, int writeFlushDurationMsLimit, int jitterDuration){
         this.restTemplate = restTemplate;
         this.routeProvider = routeProvider;
         this.influxDBFactory = influxDBFactory;
@@ -65,10 +66,15 @@ public class InfluxDBHelper {
         this.urlInfluxDBInstanceMap = new ConcurrentHashMap<>();
         this.numberOfPointsInAWriteBatch = numberOfPointsInAWriteBatch;
         this.writeFlushDurationMsLimit = writeFlushDurationMsLimit;
+        this.jitterDuration = jitterDuration;
         this.backupService = backupService;
 
         this.influxDBWriteTimer = registry.timer("ingestion.influxdb.write");
         this.getInfluxDBInfoTimer = registry.timer("ingestion.routing.info.get");
+    }
+
+    public InfluxDBFactory getInfluxDBFactory() {
+        return this.influxDBFactory;
     }
 
     @Data
@@ -268,7 +274,8 @@ public class InfluxDBHelper {
      */
     private InfluxDB getInfluxDBClient(String instanceUrl) {
         return this.urlInfluxDBInstanceMap.computeIfAbsent(instanceUrl, key -> this.influxDBFactory.getInfluxDB(
-                instanceUrl, this.numberOfPointsInAWriteBatch, this.writeFlushDurationMsLimit));
+                instanceUrl, this.numberOfPointsInAWriteBatch,
+                this.writeFlushDurationMsLimit, this.jitterDuration));
     }
 
     private boolean createRetentionPolicy(final String databaseName, final String baseUrl,

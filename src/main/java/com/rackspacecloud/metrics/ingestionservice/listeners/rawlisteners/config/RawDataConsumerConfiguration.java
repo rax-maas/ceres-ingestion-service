@@ -9,6 +9,7 @@ import com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.deseri
 import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.autoconfigure.metrics.MeterRegistryCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,6 +26,15 @@ import org.springframework.kafka.listener.ContainerProperties;
 public class RawDataConsumerConfiguration {
 
     ConsumerConfigurationProperties properties;
+
+    @Value("${local-metrics-url}")
+    private String localMetricsUrl;
+
+    @Value("${local-metrics-database}")
+    private String localMetricsDatabase;
+
+    @Value("${local-metrics-rp}")
+    private String localMetricsRetPolicy;
 
     @Autowired
     public RawDataConsumerConfiguration(ConsumerConfigurationProperties properties){
@@ -100,7 +110,7 @@ public class RawDataConsumerConfiguration {
     @Bean
     @Autowired
     public RawListener unifiedMetricsListener(InfluxDBHelper influxDBHelper, MeterRegistry registry) {
-        return new RawListener(influxDBHelper, registry);
+        return new RawListener(influxDBHelper, registry, localMetricsUrl, localMetricsDatabase, localMetricsRetPolicy);
     }
 
     @Bean

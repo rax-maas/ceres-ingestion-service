@@ -3,6 +3,11 @@ server:
 spring:
   application:
     name: ceres-ingestion-service
+
+local-metrics-url: http://localhost:8086
+local-metrics-database: ceres
+local-metrics-rp: autogen
+
 ---
 spring:
   profiles: test
@@ -43,6 +48,7 @@ tenant-routing-service:
 influxdb:
   number-of-points-in-a-write-batch: 3000
   write-flush-duration-ms-limit: 100
+  jitter-duration: 200
 
 backup:
   # Not using environment variable for this bucket, change as needed
@@ -98,6 +104,7 @@ tenant-routing-service:
 influxdb:
   number-of-points-in-a-write-batch: 3000
   write-flush-duration-ms-limit: 100
+  jitter-duration: 200
 
 
 logging:
@@ -152,6 +159,8 @@ rest-template:
   pooling-http-client-connection-manager:
     max-total: ${REST_TEMPLATE_CONNECTION_POOLING_MAX} # Max number of connection to pool
 
+local-metrics-url: ${INFLUXDB_METRICS_URL}
+
 kafka:
   servers: ${KAFKA_BOOTSTRAP_SERVERS}
   listener-container-idle-interval: ${LISTENER_CONTAINER_IDLE_INTERVAL}
@@ -187,6 +196,7 @@ tenant-routing-service:
 influxdb:
   number-of-points-in-a-write-batch: ${NUMBER_OF_POINTS_IN_A_WRITE_BATCH}
   write-flush-duration-ms-limit: ${WRITE_FLUSH_DURATION_MS_LIMIT}
+  jitter-duration: ${JITTER_DURATION}
 
 logging:
   level:

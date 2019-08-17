@@ -128,7 +128,7 @@ public class RollupListener extends UnifiedMetricsListener {
 
         writeToInfluxDb(tenantPayloadsMap, rollupLevel);
 
-        processPostInfluxDbIngestion(records, partitionId, offset, ack);
+        processPostInfluxDbIngestion(records, ack);
     }
 
     private void writeToInfluxDb(
