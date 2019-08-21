@@ -22,12 +22,9 @@ public class UnifiedMetricsListener implements ConsumerSeekAware {
         log.info("Registering seekCallback at [{}]", Instant.now());
     }
 
-    protected void processPostInfluxDbIngestion(
-            final List<?> records, final int partitionId,
-            final long offset, final Acknowledgment ack) {
+    protected void processPostInfluxDbIngestion(final List<?> records, final Acknowledgment ack) {
 
         ack.acknowledge();
-        log.debug("Successfully processed partitionId:{}, offset:{} at {}", partitionId, offset, Instant.now());
 
         if (batchProcessedCount % MESSAGE_PROCESS_REPORT_COUNT == 0) {
             log.info("Processed {} batches.", batchProcessedCount);

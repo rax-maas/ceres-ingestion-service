@@ -9,25 +9,33 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.influxdb.InfluxDB;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
-import org.springframework.kafka.support.KafkaHeaders;
-import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.annotation.Payload;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 public class RawListener extends UnifiedMetricsListener {
+    private ConcurrentMap<String, Map<String, Map<String, Long>>> topicPartitionMonitoringSystemRecordsCount =
+            new ConcurrentHashMap<>();
     private InfluxDBHelper influxDBHelper;
     private MeterRegistry registry;
     private Timer batchProcessingTimer;
+
+    String localMetricsUrl;
+    String localMetricsDatabase;
+    String localMetricsRetPolicy;
 
     private AtomicInteger gaugeRecordsCount;
 
@@ -36,8 +44,12 @@ public class RawListener extends UnifiedMetricsListener {
     @Value("${tenant-routing-service.url}")
     protected static String tenantRoutingServiceUrl;
 
-    @Autowired
-    public RawListener(InfluxDBHelper influxDBHelper, MeterRegistry registry) {
+    public RawListener(InfluxDBHelper influxDBHelper, MeterRegistry registry,
+                       String localMetricsUrl, String localMetricsDatabase, String localMetricsRetPolicy) {
+        this.localMetricsUrl = localMetricsUrl;
+        this.localMetricsDatabase = localMetricsDatabase;
+        this.localMetricsRetPolicy = localMetricsRetPolicy;
+
         this.rawListenerTag = Tag.of("listener", "raw");
         this.registry = registry;
         this.batchProcessingTimer =
@@ -57,10 +69,7 @@ public class RawListener extends UnifiedMetricsListener {
             errorHandler = "listenerErrorHandler"
     )
     public void listenUnifiedMetricsTopic(
-            @Payload final List<ExternalMetric> records,
-            @Header(KafkaHeaders.RECEIVED_PARTITION_ID) final int partitionId,
-            @Header(KafkaHeaders.OFFSET) final long offset,
-            final Acknowledgment ack) throws Exception {
+            @Payload final List<Message<ExternalMetric>> records, final Acknowledgment ack) throws Exception {
 
         gaugeRecordsCount.set(records.size());
 
@@ -69,13 +78,33 @@ public class RawListener extends UnifiedMetricsListener {
 
         // Prepare the payloads to ingest
         Map<TenantIdAndMeasurement, List<String>> tenantPayloadsMap =
-                RawMetricsProcessor.getTenantPayloadsMap(partitionId, offset, records);
+                RawMetricsProcessor.getTenantPayloadsMap(records, topicPartitionMonitoringSystemRecordsCount);
 
         writeIntoInfluxDb(tenantPayloadsMap);
 
-        processPostInfluxDbIngestion(records, partitionId, offset, ack);
+        processPostInfluxDbIngestion(records, ack);
 
         batchProcessingTimer.record(System.currentTimeMillis() - batchProcessingStartTime, TimeUnit.MILLISECONDS);
+
+        // Post topic-partition-monitoringSystem metrics to ceres database
+        List<String> lineProtocoledCollection = new ArrayList<>();
+        topicPartitionMonitoringSystemRecordsCount.forEach((topic, pMap) -> {
+            pMap.forEach((partition, msMap) -> {
+                msMap.forEach((monitoringSystem, count) -> {
+                    String tags = String.format("topic=%s,partitionid=%s,monitoringsystem=%s",
+                            topic, partition, monitoringSystem);
+
+                    lineProtocoledCollection.add(String.format("ingested_data_count,%s count=%d", tags, count));
+                });
+            });
+        });
+
+        String metricsToPublish = String.join("\n", lineProtocoledCollection);
+
+        InfluxDB influxDB = influxDBHelper.getInfluxDBFactory().getInfluxDB(localMetricsUrl);
+
+        influxDB.write(localMetricsDatabase, localMetricsRetPolicy,
+                InfluxDB.ConsistencyLevel.ONE, TimeUnit.SECONDS, metricsToPublish);
     }
 
     private void writeIntoInfluxDb(Map<TenantIdAndMeasurement, List<String>> tenantPayloadsMap) {
@@ -94,8 +123,6 @@ public class RawListener extends UnifiedMetricsListener {
             } catch (Exception e) {
                 String msg = String.format("Write to InfluxDB failed with exception message [%s].", e.getMessage());
                 log.error("[{}] Payload [{}]", msg, payload, e);
-
-//                throw new Exception(msg, e);
             }
         }
     }

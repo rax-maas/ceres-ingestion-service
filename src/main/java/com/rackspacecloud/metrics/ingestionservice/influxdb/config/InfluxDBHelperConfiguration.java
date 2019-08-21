@@ -34,6 +34,9 @@ public class InfluxDBHelperConfiguration {
     @Value("${influxdb.write-flush-duration-ms-limit}")
     private int writeFlushDurationMsLimit;
 
+    @Value("${influxdb.jitter-duration}")
+    private int jitterDuration;
+
     @Autowired
     RestTemplateConfigurationProperties config;
 
@@ -109,6 +112,7 @@ public class InfluxDBHelperConfiguration {
                 influxDBFactory,
                 backupService,
                 numberOfPointsInAWriteBatch,
-                writeFlushDurationMsLimit);
+                writeFlushDurationMsLimit,
+                jitterDuration);
     }
 }
