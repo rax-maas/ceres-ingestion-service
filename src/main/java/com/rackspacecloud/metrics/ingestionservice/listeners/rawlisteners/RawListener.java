@@ -16,6 +16,8 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.annotation.Payload;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -37,6 +39,7 @@ public class RawListener extends UnifiedMetricsListener {
     String localMetricsRetPolicy;
 
     private Tag rawListenerTag;
+    private String hostName;
 
     @Value("${tenant-routing-service.url}")
     protected static String tenantRoutingServiceUrl;
@@ -52,6 +55,11 @@ public class RawListener extends UnifiedMetricsListener {
         this.batchProcessingTimer =
                 this.registry.timer("ingestion.batch.processing", Arrays.asList(rawListenerTag));
         this.influxDBHelper = influxDBHelper;
+        try {
+            this.hostName = InetAddress.getLocalHost().getHostName();
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -84,7 +92,8 @@ public class RawListener extends UnifiedMetricsListener {
         // Post topic-partition-monitoringSystem metrics to ceres database
         List<String> lineProtocoledCollection = new ArrayList<>();
 
-        lineProtocoledCollection.add(String.format("ingestion_records_count,listener=raw count=%d", records.size()));
+        lineProtocoledCollection.add(String.format("ingestion_records_count,listener=raw,hostname=%s count=%d",
+                this.hostName, records.size()));
 
         topicPartitionMonitoringSystemRecordsCount.forEach((topic, pMap) -> {
             pMap.forEach((partition, msMap) -> {
