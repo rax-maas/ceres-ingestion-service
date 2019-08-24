@@ -93,24 +93,32 @@ public class RawMetricsProcessor {
 
         // Initialize if topic doesn't exist in the map
         topicPartitionRecordsCount.computeIfAbsent(topic, k -> {
+
+            // Initialize for the partitionID map
             Map<String, Map<String, Long>> partitionMonitoringSystemRecordsCount = new HashMap<>();
             partitionMonitoringSystemRecordsCount.put(partitionId, new HashMap<>());
 
             Map<String, Long> monitoringSystemRecordsCount = partitionMonitoringSystemRecordsCount.get(partitionId);
+
             // Initialize the record count for given monitoring system (i.e. MAAS, UIM, SALUS, etc)
+            monitoringSystemRecordsCount.put(monitoringSystem, 0L);
             return partitionMonitoringSystemRecordsCount;
         });
 
-        // Update the record count
+        // Update the record count when "topic" is already present in the map
         topicPartitionRecordsCount.computeIfPresent(topic, (t, partitionRecordsCountMap) -> {
+
+            // Seeing this particular partitionId first time
             if(!partitionRecordsCountMap.containsKey(partitionId)) {
-                partitionRecordsCountMap.put(partitionId, new HashMap<>());
+                partitionRecordsCountMap.put(partitionId, new HashMap<>()); // Initialize map for partitionId
 
                 Map<String, Long> monitoringSystemRecordsCount = partitionRecordsCountMap.get(partitionId);
                 monitoringSystemRecordsCount.put(monitoringSystem, 0L);
             }
             else {
                 Map<String, Long> monitoringSystemRecordsCount = partitionRecordsCountMap.get(partitionId);
+
+                // Topic and partitionId exist, but monitoring system does not exist. So, initialize its map
                 if(!monitoringSystemRecordsCount.containsKey(monitoringSystem)) {
                     monitoringSystemRecordsCount.put(monitoringSystem, 0L);
                 }

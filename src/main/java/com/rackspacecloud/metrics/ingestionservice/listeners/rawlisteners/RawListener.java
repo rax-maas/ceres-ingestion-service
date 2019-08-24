@@ -23,7 +23,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 public class RawListener extends UnifiedMetricsListener {
@@ -36,8 +35,6 @@ public class RawListener extends UnifiedMetricsListener {
     String localMetricsUrl;
     String localMetricsDatabase;
     String localMetricsRetPolicy;
-
-    private AtomicInteger gaugeRecordsCount;
 
     private Tag rawListenerTag;
 
@@ -54,9 +51,7 @@ public class RawListener extends UnifiedMetricsListener {
         this.registry = registry;
         this.batchProcessingTimer =
                 this.registry.timer("ingestion.batch.processing", Arrays.asList(rawListenerTag));
-        this.registry.gauge("ingestion.records.count", Arrays.asList(rawListenerTag), gaugeRecordsCount);
         this.influxDBHelper = influxDBHelper;
-        this.gaugeRecordsCount = new AtomicInteger(0);
     }
 
     /**
@@ -71,10 +66,10 @@ public class RawListener extends UnifiedMetricsListener {
     public void listenUnifiedMetricsTopic(
             @Payload final List<Message<ExternalMetric>> records, final Acknowledgment ack) throws Exception {
 
-        gaugeRecordsCount.set(records.size());
-
         long batchProcessingStartTime = System.currentTimeMillis();
         batchProcessedCount++;
+
+        topicPartitionMonitoringSystemRecordsCount.clear(); // start clean every call
 
         // Prepare the payloads to ingest
         Map<TenantIdAndMeasurement, List<String>> tenantPayloadsMap =
@@ -88,6 +83,9 @@ public class RawListener extends UnifiedMetricsListener {
 
         // Post topic-partition-monitoringSystem metrics to ceres database
         List<String> lineProtocoledCollection = new ArrayList<>();
+
+        lineProtocoledCollection.add(String.format("ingestion_records_count,listener=raw count=%d", records.size()));
+
         topicPartitionMonitoringSystemRecordsCount.forEach((topic, pMap) -> {
             pMap.forEach((partition, msMap) -> {
                 msMap.forEach((monitoringSystem, count) -> {
