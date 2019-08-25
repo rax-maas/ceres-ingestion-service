@@ -40,6 +40,7 @@ public class RawListener extends UnifiedMetricsListener {
 
     private Tag rawListenerTag;
     private String hostName;
+    private InfluxDB influxDBCeresWriter;
 
     @Value("${tenant-routing-service.url}")
     protected static String tenantRoutingServiceUrl;
@@ -55,6 +56,7 @@ public class RawListener extends UnifiedMetricsListener {
         this.batchProcessingTimer =
                 this.registry.timer("ingestion.batch.processing", Arrays.asList(rawListenerTag));
         this.influxDBHelper = influxDBHelper;
+        this.influxDBCeresWriter = influxDBHelper.getInfluxDBFactory().getInfluxDB(localMetricsUrl);
         try {
             this.hostName = InetAddress.getLocalHost().getHostName();
         } catch (UnknownHostException e) {
@@ -108,9 +110,7 @@ public class RawListener extends UnifiedMetricsListener {
 
         String metricsToPublish = String.join("\n", lineProtocoledCollection);
 
-        InfluxDB influxDB = influxDBHelper.getInfluxDBFactory().getInfluxDB(localMetricsUrl);
-
-        influxDB.write(localMetricsDatabase, localMetricsRetPolicy,
+        influxDBCeresWriter.write(localMetricsDatabase, localMetricsRetPolicy,
                 InfluxDB.ConsistencyLevel.ONE, TimeUnit.SECONDS, metricsToPublish);
     }
 
