@@ -71,8 +71,7 @@ public class RawListener extends UnifiedMetricsListener {
     @KafkaListener(
             topics = "${kafka.topics.in}",
             containerFactory = "batchFactory",
-            errorHandler = "listenerErrorHandler",
-            clientIdPrefix = "ceres"
+            errorHandler = "listenerErrorHandler"
     )
     public void listenUnifiedMetricsTopic(
             @Payload final List<Message<ExternalMetric>> records, final Acknowledgment ack) throws Exception {

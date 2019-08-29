@@ -1,14 +1,18 @@
 package com.rackspacecloud.metrics.ingestionservice.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * Purpose of this class is to create common configuration for consumers.
  */
+@Slf4j
 public abstract class ConsumerProperties {
     public Map<String, Object> properties;
     public ConsumerConfigurationProperties configurationProperties;
@@ -26,6 +30,7 @@ public abstract class ConsumerProperties {
         properties.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, configProps.getFetchMaxWaitMsConfig());
         properties.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, configProps.getMaxPartitionFetchBytesConfig());
         properties.put(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, configProps.getHeartbeatIntervalMsConfig());
+        properties.put(ConsumerConfig.CLIENT_ID_CONFIG, getHostName());
     }
 
     public void addSslConfig(){
@@ -35,5 +40,15 @@ public abstract class ConsumerProperties {
         properties.put("ssl.truststore.password", configurationProperties.getSsl().getTruststorePassword());
         properties.put("ssl.key.password", configurationProperties.getSsl().getKeyPassword());
         properties.put("security.protocol", configurationProperties.getProperties().getSecurityProtocol());
+    }
+
+    private String getHostName() {
+        try {
+            return InetAddress.getLocalHost().getHostName();
+        } catch (UnknownHostException e) {
+            log.error("Couldn't get hostname. [{}]", e.getMessage());
+        }
+
+        return "";
     }
 }
