@@ -14,6 +14,7 @@ public class ConsumerConfigurationProperties {
     private List<String> servers;
     private long listenerContainerIdleInterval;
     private int sessionTimeoutMsConfig;
+    private int heartbeatIntervalMsConfig;
     private int maxPollRecordsConfig;
     private String fetchMinBytesConfig;
     private int fetchMaxWaitMsConfig;

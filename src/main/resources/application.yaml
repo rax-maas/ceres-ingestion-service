@@ -24,7 +24,8 @@ rest-template:
 kafka:
   servers: ${spring.embedded.kafka.brokers}
   listener-container-idle-interval: 10000
-  session-timeout-ms-config: 15000
+  session-timeout-ms-config: 30000
+  heartbeat-interval-ms-config: 10000
   max-poll-records-config: 1500
   fetch-min-bytes-config: 8388608
   fetch-max-wait-ms-config: 10
@@ -73,6 +74,7 @@ kafka:
   servers: ${TEST_KAFKA_BOOTSTRAP_SERVERS}
   listener-container-idle-interval: ${LISTENER_CONTAINER_IDLE_INTERVAL}
   session-timeout-ms-config: ${SESSION_TIMEOUT_MS_CONFIG}
+  heartbeat-interval-ms-config: 10000
   max-poll-records-config: ${MAX_POLL_RECORDS_CONFIG}
   fetch-min-bytes-config: ${FETCH_MIN_BYTES_CONFIG}
   fetch-max-wait-ms-config: ${FETCH_MAX_WAIT_MS_CONFIG}
@@ -165,6 +167,7 @@ kafka:
   servers: ${KAFKA_BOOTSTRAP_SERVERS}
   listener-container-idle-interval: ${LISTENER_CONTAINER_IDLE_INTERVAL}
   session-timeout-ms-config: ${SESSION_TIMEOUT_MS_CONFIG}
+  heartbeat-interval-ms-config: ${HEARTBEAT_INTERVAL_MS_CONFIG}
   max-poll-records-config: ${MAX_POLL_RECORDS_CONFIG}
   fetch-min-bytes-config: ${FETCH_MIN_BYTES_CONFIG}
   fetch-max-wait-ms-config: ${FETCH_MAX_WAIT_MS_CONFIG}
