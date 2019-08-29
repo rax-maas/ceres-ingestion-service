@@ -25,6 +25,7 @@ public abstract class ConsumerProperties {
         properties.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, configProps.getFetchMinBytesConfig());
         properties.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, configProps.getFetchMaxWaitMsConfig());
         properties.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, configProps.getMaxPartitionFetchBytesConfig());
+        properties.put(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, configProps.getHeartbeatIntervalMsConfig());
     }
 
     public void addSslConfig(){
