@@ -18,10 +18,7 @@ import org.springframework.messaging.handler.annotation.Payload;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
@@ -42,6 +39,10 @@ public class RawListener extends UnifiedMetricsListener {
     private String hostName;
     private InfluxDB influxDBCeresWriter;
 
+    private Map<String, Integer> payloadMetrics;
+    private static final String PAYLOAD_SIZE = "payloadsize";
+    private static final String PAYLOAD_RECORDS_COUNT = "payloadrecordscount";
+
     @Value("${tenant-routing-service.url}")
     protected static String tenantRoutingServiceUrl;
 
@@ -56,6 +57,7 @@ public class RawListener extends UnifiedMetricsListener {
         this.batchProcessingTimer =
                 this.registry.timer("ingestion.batch.processing", Arrays.asList(rawListenerTag));
         this.influxDBHelper = influxDBHelper;
+        this.payloadMetrics = new HashMap<>();
         this.influxDBCeresWriter = influxDBHelper.getInfluxDBFactory().getInfluxDB(localMetricsUrl);
         try {
             this.hostName = InetAddress.getLocalHost().getHostName();
@@ -96,6 +98,9 @@ public class RawListener extends UnifiedMetricsListener {
 
         lineProtocoledCollection.add(String.format("ingestion_records_count,listener=raw,hostname=%s count=%d",
                 this.hostName, records.size()));
+        lineProtocoledCollection.add(String.format("ingestion_payload,listener=raw,hostname=%s %s=%d,%s=%d",
+                this.hostName, PAYLOAD_RECORDS_COUNT, payloadMetrics.get(PAYLOAD_RECORDS_COUNT),
+                        PAYLOAD_SIZE, payloadMetrics.get(PAYLOAD_SIZE)));
 
         topicPartitionMonitoringSystemRecordsCount.forEach((topic, pMap) -> {
             pMap.forEach((partition, msMap) -> {
@@ -119,6 +124,9 @@ public class RawListener extends UnifiedMetricsListener {
         for(Map.Entry<TenantIdAndMeasurement, List<String>> entry : tenantPayloadsMap.entrySet()) {
             TenantIdAndMeasurement tenantIdAndMeasurement = entry.getKey();
             String payload = String.join("\n", entry.getValue());
+            payloadMetrics.put(PAYLOAD_RECORDS_COUNT, entry.getValue().size());
+            payloadMetrics.put(PAYLOAD_SIZE, payload.getBytes().length);
+
             try {
                 // cleanup tenantIdAndMeasurement by replacing any special character
                 // with "_" before passing it to the function
