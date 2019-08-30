@@ -232,3 +232,56 @@ Automation and related topics, such as automatically detecting problems with
 InfluxDB instances and deciding to perform an automatic restore should be 
 investigated. However, this become moot in a situation where we switch to
 enterprise, for example.
+
+### Example restore script
+
+```
+#!/usr/bin/env bash
+
+do_help () {
+  cat <<EndHelp
+
+Must be done first:
+  Stop ingestion service
+  Wipe damaged InfluxDB Instances
+EndHelp
+  exit 1
+}
+
+# comment out to run
+do_help
+
+DIR=`mktemp -d -t influxdb`
+pushd $DIR
+
+gcloud config set project ceres-dev-222017
+# gsutil du -hs gs://ceres-backup-dev/influxdb-0.influxdb
+gsutil -m cp 'gs://ceres-backup-dev/influxdb-0.influxdb/**' .
+
+kubectl exec influxdb-0 -- mkdir /backup
+for i in *.gz; do
+  echo "uploading $i"
+  kubectl cp $i influxdb-0:/backup/
+done
+
+rm -f buildtables.sql
+for i in {0..9}; do
+  db=db_${i}
+  echo "drop database $db;" >> buildtables.sql
+  echo "create database $db with duration 5d replication 1 name rp_5d;" >> buildtables.sql
+done
+
+kubectl cp buildtables.sql influxdb-0:/
+kubectl exec influxdb-0 -- bash -c 'influx < /buildtables.sql'
+
+rm -f restore.sh
+cat > restore.sh <<"EndScript"
+for i in /backup/*.gz; do influx -import -compressed -path=$i -precision=s; done
+EndScript
+
+kubectl cp restore.sh influxdb-0:/
+kubectl exec influxdb-0 -- bash /restore.sh
+
+popd
+rm -rf $DIR
+```
