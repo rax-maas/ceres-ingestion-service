@@ -7,6 +7,7 @@ import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.RawListener;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.deserializer.AvroDeserializer;
 import io.micrometer.core.instrument.MeterRegistry;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,9 +21,13 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.listener.ContainerProperties;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
 @Configuration
 @EnableKafka
 @Profile("raw-data-consumer")
+@Slf4j
 public class RawDataConsumerConfiguration {
 
     ConsumerConfigurationProperties properties;
@@ -116,6 +121,16 @@ public class RawDataConsumerConfiguration {
     @Bean
     MeterRegistryCustomizer<MeterRegistry> metricsCommonTags() {
         return registry -> registry.config().commonTags(
-                "consumer.group", properties.getConsumer().getGroup());
+                "consumer.group", properties.getConsumer().getGroup(), "hostname", getHostName());
+    }
+
+    private String getHostName() {
+        try {
+            return InetAddress.getLocalHost().getHostName();
+        } catch (UnknownHostException e) {
+            log.error("Couldn't get hostname. [{}]", e.getMessage());
+        }
+
+        return "";
     }
 }
