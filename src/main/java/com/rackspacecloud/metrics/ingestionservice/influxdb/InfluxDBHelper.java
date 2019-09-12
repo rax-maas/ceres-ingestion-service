@@ -198,10 +198,17 @@ public class InfluxDBHelper {
         return tenantRoutes;
     }
 
-    private boolean databaseExists(final String databaseName, final String baseUrl) {
+    private boolean databaseExists(final String databaseName, final String baseUrl) throws Exception {
         String queryString = "SHOW DATABASES";
 
         InfluxDB influxDB = getInfluxDBClient(baseUrl);
+
+        if(influxDB == null) {
+            String errorMessage = String.format("Couldn't get InfluxDB instance for URL [%s].", baseUrl);
+            log.error(errorMessage);
+            throw new Exception(errorMessage);
+        }
+
         QueryResult queryResult = influxDB.query(new Query(queryString, ""));
 
         if(queryResult.hasError()) {
