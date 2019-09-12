@@ -137,7 +137,7 @@ public class RawListener extends UnifiedMetricsListener {
 
             } catch (Exception e) {
                 String msg = String.format("Write to InfluxDB failed with exception message [%s].", e.getMessage());
-                log.error("[{}] Payload [{}]", msg, payload, e);
+                log.error("[{}] Payload [{}] \n [{}]", msg, payload, e);
             }
         }
     }
