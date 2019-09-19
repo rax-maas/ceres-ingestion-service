@@ -216,19 +216,39 @@ public class InfluxDBHelper {
             return false;
         }
 
-        if(queryResult != null
-                && queryResult.getResults().size() > 0
-                && queryResult.getResults().get(0).getSeries().size() > 0
-                && queryResult.getResults().get(0).getSeries().get(0).getValues().size() > 0
-                )
-        {
-            List<String> databases = new ArrayList<>();
-            for(List<Object> strings : queryResult.getResults().get(0).getSeries().get(0).getValues()) {
-                for(Object database : strings){
-                    databases.add(database.toString());
+        try {
+            // Following "if" statement is quite ugly. We should refactor it sometime. Readability is bad.
+            // So, here is what's going on:
+            // We need to make sure that query result has some value in it's series.
+            // Earlier I was assuming that even if there is no "value" in a series, it will still have that key.
+            // I was wrong. This is coming from external library where we don't have control.
+            // So, to be more defensive on the coding, I added null checks at every level.
+            // For example,
+            //      - before we access any result, we should check that getResults() doesn't return null
+            //      - before we access any series, we should check that getSeries() doesn't return null
+            //      - before we access any value, we should check that getValues() doesn't return null
+            // As this result is coming from external library, it's always a good idea to make these checks before
+            // accepting that in our code.
+            if (queryResult != null
+                    && queryResult.getResults() != null
+                    && queryResult.getResults().size() > 0
+                    && queryResult.getResults().get(0).getSeries() != null
+                    && queryResult.getResults().get(0).getSeries().size() > 0
+                    && queryResult.getResults().get(0).getSeries().get(0).getValues() != null
+                    && queryResult.getResults().get(0).getSeries().get(0).getValues().size() > 0
+                    ) {
+                List<String> databases = new ArrayList<>();
+                for (List<Object> strings : queryResult.getResults().get(0).getSeries().get(0).getValues()) {
+                    for (Object database : strings) {
+                        databases.add(database.toString());
+                    }
                 }
+                if (databases.contains(databaseName)) return true;
             }
-            if(databases.contains(databaseName)) return true;
+        }
+        catch (Exception ex) {
+            log.error("Query result processing throws exception. Message: [{}]", ex.getMessage());
+            throw ex;
         }
 
         return false;
