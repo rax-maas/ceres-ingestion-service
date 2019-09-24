@@ -11,7 +11,6 @@ import org.apache.avro.specific.SpecificRecordBase;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.serialization.Serializer;
 
-import javax.xml.bind.DatatypeConverter;
 import java.io.ByteArrayOutputStream;
 import java.util.Map;
 
@@ -38,7 +37,6 @@ public class AvroSerializer<T extends SpecificRecordBase> implements Serializer<
             outputStream.close();
 
             byte[] result = outputStream.toByteArray();
-            log.debug("serialized data='{}'", DatatypeConverter.printHexBinary(result));
 
             return result;
         }

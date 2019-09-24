@@ -6,6 +6,7 @@ import com.rackspacecloud.metrics.ingestionservice.producer.MockMetricHelper;
 import com.rackspacecloud.metrics.ingestionservice.producer.Sender;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,10 +49,12 @@ public class IngestionServiceApplicationTests {
     }
 
 	@Test
+    @Ignore
 	public void contextLoads() {
 	}
 
 	@Test
+    @Ignore
     public void testSuccessfulRawDataConsumption() throws Exception {
         // Mock influxDB ingestion call
 		doNothing().when(this.influxDBHelperMock).ingestToInfluxDb(anyString(), anyString(), anyString(), anyString());
@@ -70,6 +73,7 @@ public class IngestionServiceApplicationTests {
     }
 
     @Test
+    @Ignore
     public void test_whenIngestToInfluxDBThrowsException_globalExceptionHandlerCatches() throws Exception {
         // Mock influxDB ingestion call
         doThrow(new Exception("test_whenIngestToInfluxDBThrowsException_globalExceptionHandlerCatches"))
