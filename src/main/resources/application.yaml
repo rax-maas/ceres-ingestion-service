@@ -8,6 +8,7 @@ local-metrics-url: http://localhost:8086
 local-metrics-database: ceres
 local-metrics-rp: autogen
 
+lru-cache-size: 10
 ---
 spring:
   profiles: test
@@ -162,6 +163,8 @@ rest-template:
     max-total: ${REST_TEMPLATE_CONNECTION_POOLING_MAX} # Max number of connection to pool
 
 local-metrics-url: ${INFLUXDB_METRICS_URL}
+
+lru-cache-size: ${LRU_CACHE_SIZE}
 
 kafka:
   servers: ${KAFKA_BOOTSTRAP_SERVERS}

@@ -37,6 +37,9 @@ public class InfluxDBHelperConfiguration {
     @Value("${influxdb.jitter-duration}")
     private int jitterDuration;
 
+    @Value("${lru-cache-size}")
+    private int influxDbInfoLruCacheSize;
+
     @Autowired
     RestTemplateConfigurationProperties config;
 
@@ -113,6 +116,7 @@ public class InfluxDBHelperConfiguration {
                 backupService,
                 numberOfPointsInAWriteBatch,
                 writeFlushDurationMsLimit,
-                jitterDuration);
+                jitterDuration,
+                influxDbInfoLruCacheSize);
     }
 }
