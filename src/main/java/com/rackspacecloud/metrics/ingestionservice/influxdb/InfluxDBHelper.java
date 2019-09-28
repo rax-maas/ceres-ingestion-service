@@ -15,11 +15,7 @@ import org.influxdb.dto.Query;
 import org.influxdb.dto.QueryResult;
 import org.springframework.web.client.RestTemplate;
 
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
@@ -38,7 +34,7 @@ public class InfluxDBHelper {
      *              retentionPolicyName = "rp_5d"
      *              retentionPolicy = "5d"
      */
-    private ConcurrentMap<String, Map<String, InfluxDbInfoForRollupLevel>> influxDbInfoMap;
+    private LinkedHashMap<String, Map<String, InfluxDbInfoForRollupLevel>> influxDbInfoMap;
     private RestTemplate restTemplate;
     private RouteProvider routeProvider;
     private InfluxDBFactory influxDBFactory;
@@ -62,7 +58,7 @@ public class InfluxDBHelper {
         this.restTemplate = restTemplate;
         this.routeProvider = routeProvider;
         this.influxDBFactory = influxDBFactory;
-        this.influxDbInfoMap = new ConcurrentHashMap<>();
+        this.influxDbInfoMap = new LinkedHashMap<>(50_000, 0.75f, true);
         this.urlInfluxDBInstanceMap = new ConcurrentHashMap<>();
         this.numberOfPointsInAWriteBatch = numberOfPointsInAWriteBatch;
         this.writeFlushDurationMsLimit = writeFlushDurationMsLimit;
