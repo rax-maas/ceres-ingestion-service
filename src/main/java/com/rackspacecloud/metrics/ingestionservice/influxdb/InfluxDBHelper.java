@@ -58,7 +58,7 @@ public class InfluxDBHelper {
         this.restTemplate = restTemplate;
         this.routeProvider = routeProvider;
         this.influxDBFactory = influxDBFactory;
-        this.influxDbInfoMap = new LinkedHashMap<>(50_000, 0.75f, true);
+        this.influxDbInfoMap = new LruCache<>(50_000, 0.75f, true);
         this.urlInfluxDBInstanceMap = new ConcurrentHashMap<>();
         this.numberOfPointsInAWriteBatch = numberOfPointsInAWriteBatch;
         this.writeFlushDurationMsLimit = writeFlushDurationMsLimit;
@@ -71,6 +71,19 @@ public class InfluxDBHelper {
 
     public InfluxDBFactory getInfluxDBFactory() {
         return this.influxDBFactory;
+    }
+
+    class LruCache<K, V> extends LinkedHashMap<K, V> {
+        private int MAX_LIMIT = 50_000;
+
+        LruCache(int initialCapacity, float loadFactor, boolean accessOrder) {
+            super(initialCapacity, loadFactor, accessOrder);
+        }
+
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
+            return size() > MAX_LIMIT;
+        }
     }
 
     @Data
