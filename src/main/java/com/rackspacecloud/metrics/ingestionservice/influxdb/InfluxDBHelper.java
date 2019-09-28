@@ -34,7 +34,7 @@ public class InfluxDBHelper {
      *              retentionPolicyName = "rp_5d"
      *              retentionPolicy = "5d"
      */
-    private LinkedHashMap<String, Map<String, InfluxDbInfoForRollupLevel>> influxDbInfoMap;
+    private LruCache<String, Map<String, InfluxDbInfoForRollupLevel>> influxDbInfoMap;
     private RestTemplate restTemplate;
     private RouteProvider routeProvider;
     private InfluxDBFactory influxDBFactory;
