@@ -1,5 +1,6 @@
 package com.rackspacecloud.metrics.ingestionservice.influxdb;
 
+import com.github.benmanes.caffeine.cache.Cache;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.LineProtocolBackupService;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.RouteProvider;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.TenantRoutes;
@@ -34,7 +35,7 @@ public class InfluxDBHelper {
      *              retentionPolicyName = "rp_5d"
      *              retentionPolicy = "5d"
      */
-    private LruCache<String, Map<String, InfluxDbInfoForRollupLevel>> influxDbInfoMap;
+    private Cache<String, Map<String, InfluxDbInfoForRollupLevel>> influxDbInfoCache;
     private RestTemplate restTemplate;
     private RouteProvider routeProvider;
     private InfluxDBFactory influxDBFactory;
@@ -55,11 +56,11 @@ public class InfluxDBHelper {
             InfluxDBFactory influxDBFactory,
             LineProtocolBackupService backupService,
             int numberOfPointsInAWriteBatch, int writeFlushDurationMsLimit,
-            int jitterDuration, int influxDbInfoLruCacheSize){
+            int jitterDuration, Cache<String, Map<String, InfluxDbInfoForRollupLevel>> cache){
         this.restTemplate = restTemplate;
         this.routeProvider = routeProvider;
         this.influxDBFactory = influxDBFactory;
-        this.influxDbInfoMap = new LruCache<>(influxDbInfoLruCacheSize, 0.75f, true);
+        this.influxDbInfoCache = cache;
         this.urlInfluxDBInstanceMap = new ConcurrentHashMap<>();
         this.numberOfPointsInAWriteBatch = numberOfPointsInAWriteBatch;
         this.writeFlushDurationMsLimit = writeFlushDurationMsLimit;
@@ -74,23 +75,9 @@ public class InfluxDBHelper {
         return this.influxDBFactory;
     }
 
-    class LruCache<K, V> extends LinkedHashMap<K, V> {
-        private int maxLimit;
-
-        LruCache(int initialCapacity, float loadFactor, boolean accessOrder) {
-            super(initialCapacity, loadFactor, accessOrder);
-            maxLimit = initialCapacity; // Keep it fixed at initial capacity
-        }
-
-        @Override
-        protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
-            return size() > maxLimit;
-        }
-    }
-
     @Data
     @AllArgsConstructor
-    class InfluxDbInfoForRollupLevel {
+    public class InfluxDbInfoForRollupLevel {
         private String path;
         private String databaseName;
         private String retentionPolicyName;
@@ -118,8 +105,8 @@ public class InfluxDBHelper {
 
         // If we already have routing information from earlier calls, we don't need to call
         // routing service to get the same information again
-        if(influxDbInfoMap.containsKey(tenantIdAndMeasurementKey))
-            return influxDbInfoMap.get(tenantIdAndMeasurementKey);
+        Map<String, InfluxDbInfoForRollupLevel> info = influxDbInfoCache.getIfPresent(tenantIdAndMeasurementKey);
+        if(info != null) return info;
 
         // Get tenant routes (each rollup level and their corresponding path, dbname, ret-policy info)
         // from routing service
@@ -164,7 +151,6 @@ public class InfluxDBHelper {
                 }
             }
             else {
-                // TODO: store already processed database so that we don't call createDatabase blindly
                 if(createDatabase(databaseName, path, retPolicy, retPolicyName)) {
                     log.info("Created new database [{}] with retention policy name [{}] on instance [{}]",
                             databaseName, retPolicyName, path);
@@ -180,7 +166,7 @@ public class InfluxDBHelper {
             }
         }
 
-        influxDbInfoMap.put(tenantIdAndMeasurementKey, influxDbInfoForTenant);
+        influxDbInfoCache.put(tenantIdAndMeasurementKey, influxDbInfoForTenant);
 
         return influxDbInfoForTenant;
     }

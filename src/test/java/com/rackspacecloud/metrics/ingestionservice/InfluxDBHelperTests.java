@@ -1,5 +1,6 @@
 package com.rackspacecloud.metrics.ingestionservice;
 
+import com.github.benmanes.caffeine.cache.Cache;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.GCLineProtocolBackupService;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.RouteProvider;
@@ -41,6 +42,7 @@ public class InfluxDBHelperTests {
     Timer influxDBWriteTimer;
     Timer getInfluxDBInfoTimer;
     GCLineProtocolBackupService backupService;
+    Cache<String, Map<String, InfluxDBHelper.InfluxDbInfoForRollupLevel>> cacheMock;
 
     @Before
     public void setUp() throws IOException {
@@ -51,6 +53,7 @@ public class InfluxDBHelperTests {
         influxDBWriteTimer = mock(Timer.class);
         getInfluxDBInfoTimer = mock(Timer.class);
         backupService = mock(GCLineProtocolBackupService.class);
+        cacheMock = mock(Cache.class);
         when(meterRegistry.timer("ingestion.influxdb.write")).thenReturn(influxDBWriteTimer);
         when(meterRegistry.timer("ingestion.routing.info.get")).thenReturn(getInfluxDBInfoTimer);
     }
@@ -59,7 +62,8 @@ public class InfluxDBHelperTests {
     public void ingestToInfluxDb_withExistingDatabaseAndRetPolicy_shouldSucceed() throws Exception {
         InfluxDBHelper influxDBHelper = new InfluxDBHelper(
                 restTemplateMock, routeProviderMock, meterRegistry,
-                influxDBUtilsMock, backupService, 100, 100, 100, 1);
+                influxDBUtilsMock, backupService, 100, 100,
+                100, cacheMock);
         String tenantId = "hybrid:1667601";
         String measurement = "cpu";
         String databaseName = "existing_db";
@@ -80,7 +84,7 @@ public class InfluxDBHelperTests {
     public void ingestToInfluxDb_withNonExistingDatabase_shouldCreateDatabase() throws Exception {
         InfluxDBHelper influxDBHelper = new InfluxDBHelper(
                 restTemplateMock, routeProviderMock, meterRegistry, influxDBUtilsMock, backupService,
-                100, 100, 100, 1);
+                100, 100, 100, cacheMock);
         String tenantId = "hybrid:1667601";
         String measurement = "cpu";
         String databaseName = "non_existing_database";
@@ -98,7 +102,8 @@ public class InfluxDBHelperTests {
             throws Exception {
         InfluxDBHelper influxDBHelper = new InfluxDBHelper(
                 restTemplateMock, routeProviderMock, meterRegistry,
-                influxDBUtilsMock, backupService, 100, 100, 100, 1);
+                influxDBUtilsMock, backupService, 100,
+                100, 100, cacheMock);
         String tenantId = "hybrid:1667601";
         String measurement = "cpu";
         String databaseName = "existing_db";

@@ -1,5 +1,7 @@
 package com.rackspacecloud.metrics.ingestionservice.influxdb.config;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.DevTestTenantRouteProvider;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.LineProtocolBackupService;
@@ -24,6 +26,7 @@ import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Collections;
+import java.util.Map;
 
 @Configuration
 @EnableConfigurationProperties(RestTemplateConfigurationProperties.class)
@@ -117,6 +120,11 @@ public class InfluxDBHelperConfiguration {
                 numberOfPointsInAWriteBatch,
                 writeFlushDurationMsLimit,
                 jitterDuration,
-                influxDbInfoLruCacheSize);
+                cache());
+    }
+
+    @Bean
+    public Cache<String, Map<String, InfluxDBHelper.InfluxDbInfoForRollupLevel>> cache() {
+        return Caffeine.newBuilder().maximumSize(influxDbInfoLruCacheSize).build();
     }
 }
