@@ -20,4 +20,6 @@ public class BackupProperties {
     private long gcsFlushMilliseconds;
     // Force flush stream after each write if true    
     private boolean alwaysFlush;
+    // Max cache size
+    private int maxCacheSize;
 }
