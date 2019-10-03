@@ -22,4 +22,6 @@ public class BackupProperties {
     private boolean alwaysFlush;
     // Max cache size
     private int maxCacheSize;
+    // Backup functionality enabled or disabled
+    private boolean backupEnabled;
 }
