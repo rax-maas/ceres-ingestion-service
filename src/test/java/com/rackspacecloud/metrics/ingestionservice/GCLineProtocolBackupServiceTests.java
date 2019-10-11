@@ -32,6 +32,7 @@ import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest
@@ -59,6 +60,12 @@ public class GCLineProtocolBackupServiceTests {
         if(storage.list(backupProperties.getGcsBackupBucket())!=null) {
             storage.list(backupProperties.getGcsBackupBucket()).iterateAll().forEach(blob -> blob.delete());
         }
+    }
+
+    @Test
+    public void configurationTest() {
+        assertThat(backupProperties.getMaxCacheSize() > 100);
+        assertTrue(backupProperties.isBackupEnabled());
     }
 
     @Test
