@@ -16,6 +16,7 @@ import org.influxdb.dto.Query;
 import org.influxdb.dto.QueryResult;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.URL;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -337,11 +338,8 @@ public class InfluxDBHelper {
 
         long startTime = System.currentTimeMillis();
         try {
-            // Backup first so partial writes are backed-up
-            // TODO: TEMPORARILY COMMENTED BELOW TO INVESTIGATE "java.lang.OutOfMemoryError: Java heap space"
-            // TODO: Right now, ingestion service is crashing with "Java heap space" issue and following
-            // TODO: line shows up in the log as the reason.
-            //backupService.writeToBackup(payload, new URL(baseUrl), databaseName, retPolicyName);
+            // Enable or disable using
+            backupService.writeToBackup(payload, new URL(baseUrl), databaseName, retPolicyName);
             influxDB.write(databaseName, retPolicyName, InfluxDB.ConsistencyLevel.ONE, TimeUnit.SECONDS, payload);
         }
         catch(InfluxDBException.PointsBeyondRetentionPolicyException ex) {

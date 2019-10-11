@@ -24,6 +24,7 @@ public class BackupCacheConfiguration {
         CaffeineCacheManager ccm = new CaffeineCacheManager("lineProtocolBackupWriter");
         ccm.setCaffeine(
                 Caffeine.newBuilder()
+                        .maximumSize(backupProperties.getMaxCacheSize())
                         .expireAfterAccess(backupProperties.getGcsTimeout())
                         .removalListener(GCLineProtocolBackupService.removalListener)
                         );

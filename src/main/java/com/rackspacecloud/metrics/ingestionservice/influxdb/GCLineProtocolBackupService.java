@@ -99,6 +99,10 @@ public class GCLineProtocolBackupService implements LineProtocolBackupService {
     @Override
     public void writeToBackup(String payload, URL instanceURL, String database, String retentionPolicy)
             throws IOException {
+        if(!backupProperties.isBackupEnabled()){
+            log.debug("Backup is disabled");
+            return;
+        }
         Assert.hasText(payload, "payload must be a line protocol payload");
         Assert.hasText(database, "database name must not be missing");
         Assert.hasText(retentionPolicy, "retention policy name must not be missing");

@@ -45,6 +45,10 @@ public class GCLineProtocolBackupServiceIntegrationTests {
                         "to point to a credentials file " +
                         "for a Google service account, but is " + value,
                 value != null);
+
+        Assume.assumeTrue("Backup Service must be enabled", backupProperties.isBackupEnabled());
+
+        Assume.assumeTrue("Cache size is specified", backupProperties.getMaxCacheSize() > 100);
     }
 
     @Test
