@@ -249,5 +249,5 @@ backup:
   gcs-timeout: 30m
   gcs-flush-milliseconds: 3600000
   always-flush: false # We may want to disable this for performance reasons
-  max-cache-size: 2000
-  backup-enabled: true
+  max-cache-size: ${BACKUP_CACHE_SIZE}
+  backup-enabled: ${BACKUP_ENABLED}
