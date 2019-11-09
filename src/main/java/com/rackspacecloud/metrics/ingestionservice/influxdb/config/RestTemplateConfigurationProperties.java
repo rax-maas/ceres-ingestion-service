@@ -19,5 +19,6 @@ public class RestTemplateConfigurationProperties {
     @Data
     public static class PoolingConnectionManager {
         int maxTotal;
+        int defaultMaxPerRoute;
     }
 }
