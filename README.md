@@ -24,8 +24,8 @@ Moves rolled-up data.
 The profile to use in development.
   
 ## Running using IntelliJ
-Setup the following environment variables:
-
-  - Environment variable `TEST_KAFKA_BOOTSTRAP_SERVERS` with value `localhost:9092`
-  - Environment variable `LISTENER_CONTAINER_IDLE_INTERVAL` with value `30000` (?)
-  - Environment variable `SESSION_TIMEOUT_MS_CONFIG` with value `30000` (?)
+- make sure containers from `test-infrastructure` are running. Make sure you ran this -> `docker-compose up -d`
+- make sure in `test-data-generator` you are running following command on the terminal:
+  `java -jar target/test-data-generator-0.0.1-SNAPSHOT.jar`
+  
+Now, you can run `ingestion-service` using IntelliJ
