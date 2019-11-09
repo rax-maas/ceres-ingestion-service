@@ -26,6 +26,7 @@ The profile to use in development.
 ## Running using IntelliJ
 - make sure containers from `test-infrastructure` are running. Make sure you ran this -> `docker-compose up -d`
 - make sure in `test-data-generator` you are running following command on the terminal:
+
   `java -jar target/test-data-generator-0.0.1-SNAPSHOT.jar`
   
 Now, you can run `ingestion-service` using IntelliJ
