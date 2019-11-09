@@ -6,10 +6,10 @@ Install docker. Once done with that, you can use [`test-infrastructure`](https:/
 
 To run or test ingestion-service locally:
 
-- Get repo `ingestion-service-functional-test`
-- Go to `ingestion-service-functional-test` folder locally
+- Get repo [`ceres-test-data-generator`](https://github.com/racker/ceres-test-data-generator)
+- Go to `ceres-test-data-generator` folder locally
 - Build repo project, i.e. `mvn clean install`  
-- Run `java -jar target/ingestion-service-functional-test-0.0.1-SNAPSHOT.jar` This will create raw test data into Kafka.
+- Run `java -jar target/ceres-test-data-generator-0.0.1-SNAPSHOT.jar` This will create raw test data into Kafka.
   
 ## Spring Boot Profiles
 As defined in `src/main/resources/application.properties`
