@@ -20,7 +20,8 @@ rest-template:
     socket-timeout: 120000              # timeout for waiting for data
 
   pooling-http-client-connection-manager:
-    max-total: 5 # Max number of connection to pool
+    max-total: 10 # Max number of connection to pool
+    default-max-per-route: 2 # default max per route
 
 kafka:
   servers: ${spring.embedded.kafka.brokers}
@@ -71,26 +72,18 @@ rest-template:
     socket-timeout: 120000              # timeout for waiting for data
 
   pooling-http-client-connection-manager:
-    max-total: 5 # Max number of connection to pool
+    max-total: 10 # Max number of connection to pool
+    default-max-per-route: 2 # default max per route
 
 kafka:
-  servers: ${TEST_KAFKA_BOOTSTRAP_SERVERS}
-  listener-container-idle-interval: ${LISTENER_CONTAINER_IDLE_INTERVAL}
-  session-timeout-ms-config: ${SESSION_TIMEOUT_MS_CONFIG}
+  servers: "localhost:9092"
+  listener-container-idle-interval: 10000
+  session-timeout-ms-config: 30000
   heartbeat-interval-ms-config: 10000
-  max-poll-records-config: ${MAX_POLL_RECORDS_CONFIG}
-  fetch-min-bytes-config: ${FETCH_MIN_BYTES_CONFIG}
-  fetch-max-wait-ms-config: ${FETCH_MAX_WAIT_MS_CONFIG}
-  max-partition-fetch-bytes-config: ${MAX_PARTITION_FETCH_BYTES_CONFIG}
-
-  ssl:
-    truststore-location: ${TRUSTSTORE_LOCATION}
-    truststore-password: ${TRUSTSTORE_PASSWORD}
-    keystore-location: ${KEYSTORE_LOCATION}
-    keystore-password: ${KEYSTORE_PASSWORD}
-    key-password: ${KEY_PASSWORD}
-  properties:
-    security-protocol: SSL
+  max-poll-records-config: 1500
+  fetch-min-bytes-config: 8388608
+  fetch-max-wait-ms-config: 10
+  max-partition-fetch-bytes-config: 8388608
 
   topics:
     in: unified.metrics.json
@@ -165,6 +158,7 @@ rest-template:
 
   pooling-http-client-connection-manager:
     max-total: ${REST_TEMPLATE_CONNECTION_POOLING_MAX} # Max number of connection to pool
+    default-max-per-route: ${REST_TEMPLATE_CONNECTION_POOLING_DEFAULT_MAX_PER_ROUTE} # default max per route
 
 local-metrics-url: ${INFLUXDB_METRICS_URL}
 
@@ -215,9 +209,6 @@ logging:
       web: info
       kafka.listener: info
     okhttp3: warn
-#    io:
-#      micrometer:
-#        stackdriver: trace
 
 management:
   endpoints:
@@ -242,7 +233,6 @@ management:
         project-id: ceres-dev-222017
         enabled: ${STACKDRIVER_ENABLED}
         batch-size: ${STACKDRIVER_BATCH_SIZE}
-#        num-threads: 10
 
 backup:
   gcs-backup-bucket: ${GCS_BACKUP_BUCKET}

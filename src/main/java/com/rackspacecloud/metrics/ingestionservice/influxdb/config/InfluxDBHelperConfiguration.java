@@ -50,6 +50,8 @@ public class InfluxDBHelperConfiguration {
     public PoolingHttpClientConnectionManager poolingHttpClientConnectionManager() {
         PoolingHttpClientConnectionManager poolingConnectionManager = new PoolingHttpClientConnectionManager();
         poolingConnectionManager.setMaxTotal(config.getPoolingHttpClientConnectionManager().getMaxTotal());
+        poolingConnectionManager.setDefaultMaxPerRoute(
+                config.getPoolingHttpClientConnectionManager().getDefaultMaxPerRoute());
         return poolingConnectionManager;
     }
 
