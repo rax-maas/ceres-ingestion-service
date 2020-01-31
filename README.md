@@ -30,3 +30,4 @@ The profile to use in development.
   `java -jar target/test-data-generator-0.0.1-SNAPSHOT.jar`
   
 Now, you can run `ingestion-service` using IntelliJ
+or `java -Dspring.profiles.active=raw-data-consumer,development -DTEST_KAFKA_BOOTSTRAP_SERVERS=localhost:9092 -jar target/ingestion-service-0.0.1-SNAPSHOT.jar`
