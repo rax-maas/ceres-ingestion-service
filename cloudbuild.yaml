@@ -21,9 +21,27 @@ steps:
     - name: user.home
       path: /root
 
+  - id: DECRYPT_INTEGRATION_TEST_CREDENTIALS
+    name: gcr.io/cloud-builders/gcloud
+    args:
+      - kms
+      - decrypt
+      - --ciphertext-file=secrets/serviceaccount.json.enc
+      - --plaintext-file=/root/serviceaccount.json
+      - --location=global
+      - --key=secrets
+      - --keyring=ceres
+    volumes:
+    - name: user.home
+      path: /root
+
   - id: TESTING
+    waitFor:
+      - DECRYPT_INTEGRATION_TEST_CREDENTIALS
     name: 'gcr.io/cloud-builders/mvn'
     args: ['test']
+    env:
+      - 'GOOGLE_APPLICATION_CREDENTIALS=/root/serviceaccount.json'
     volumes:
     - name: user.home
       path: /root
