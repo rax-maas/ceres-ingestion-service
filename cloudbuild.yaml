@@ -38,8 +38,11 @@ steps:
   - id: TESTING
     waitFor:
       - DECRYPT_INTEGRATION_TEST_CREDENTIALS
-    name: 'gcr.io/cloud-builders/mvn'
-    args: ['test']
+    name: 'maven:3.6-jdk-11'
+    args:
+      - mvn
+      - -B
+      - test
     env:
       - 'GOOGLE_APPLICATION_CREDENTIALS=/root/serviceaccount.json'
     volumes:
