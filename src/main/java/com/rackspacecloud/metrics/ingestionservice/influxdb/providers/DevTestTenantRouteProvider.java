@@ -1,14 +1,11 @@
 package com.rackspacecloud.metrics.ingestionservice.influxdb.providers;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.client.RestTemplate;
 
 /**
  * TenantRouteProvider for Dev/Test related work. This class removes Routing-Service dependency.
  */
 public class DevTestTenantRouteProvider implements RouteProvider {
-    @Value("${tenant-routing-service.url}")
-    private String tenantRoutingServiceUrl;
 
     /**
      * Get stubbed tenant routes.
@@ -16,10 +13,9 @@ public class DevTestTenantRouteProvider implements RouteProvider {
      * @param measurement
      * @param restTemplate is used to connect to the routing service to get the route
      * @return
-     * @throws Exception
      */
     @Override
-    public TenantRoutes getRoute(String tenantId, String measurement, RestTemplate restTemplate) throws Exception {
+    public TenantRoutes getRoute(String tenantId, String measurement, RestTemplate restTemplate) {
         return getStubbedRoutes(tenantId, measurement);
     }
 
