@@ -1,0 +1,48 @@
+substitutions:
+  _GCS_CACHE_BUCKET: ceres-cache
+  _CERES_PROJECT: ceres-ingestion-service
+
+steps:
+
+  # Load the cached files from GCS if they exist.
+  - id: PULL_DOWN_CACHE
+    waitFor: ['-']
+    name: gcr.io/cloud-builders/gsutil
+    dir: /root
+    entrypoint: bash
+    args:
+    - -c
+    - |
+      (
+        gsutil cp gs://${_GCS_CACHE_BUCKET}/${_CERES_PROJECT}-m2-cache.tar.gz /tmp/m2-cache.tar.gz &&
+        tar -xzf /tmp/m2-cache.tar.gz
+      ) || echo 'Cache not found'
+    volumes:
+    - name: user.home
+      path: /root
+
+  - id: TESTING
+    name: 'gcr.io/cloud-builders/mvn'
+    args: ['test']
+    volumes:
+    - name: user.home
+      path: /root
+
+  # Saves the files to the GCS cache.
+  - id: PUSH_UP_CACHE
+    waitFor:
+    - TESTING
+    name: gcr.io/cloud-builders/gsutil
+    dir: /root
+    entrypoint: bash
+    # Caches the local Maven repository.
+    args:
+    - -c
+    - |
+      set -ex
+      tar -czf /tmp/m2-cache.tar.gz .m2 &&
+      gsutil cp /tmp/m2-cache.tar.gz gs://${_GCS_CACHE_BUCKET}/${_CERES_PROJECT}-m2-cache.tar.gz
+    volumes:
+    - name: user.home
+      path: /root
+

@@ -1,0 +1,243 @@
+server:
+  port: 8085
+spring:
+  application:
+    name: ceres-ingestion-service
+
+local-metrics-url: http://localhost:8086
+local-metrics-database: ceres
+local-metrics-rp: autogen
+
+lru-cache-size: 10
+---
+spring:
+  profiles: test
+
+rest-template:
+  request-config:
+    connection-request-timeout: 120000  # timeout when requesting a connection from the connection manager
+    connect-timeout: 120000             # timeout until a connection is established
+    socket-timeout: 120000              # timeout for waiting for data
+
+  pooling-http-client-connection-manager:
+    max-total: 10 # Max number of connection to pool
+    default-max-per-route: 2 # default max per route
+
+kafka:
+  servers: ${spring.embedded.kafka.brokers}
+  listener-container-idle-interval: 10000
+  session-timeout-ms-config: 30000
+  heartbeat-interval-ms-config: 10000
+  max-poll-records-config: 1500
+  fetch-min-bytes-config: 8388608
+  fetch-max-wait-ms-config: 10
+  max-partition-fetch-bytes-config: 8388608
+
+
+  topics:
+    in: unified.metrics.json
+    source-5m: unified.metrics.json.5m
+    source-20m: unified.metrics.json.20m
+    source-60m: unified.metrics.json.60m
+    source-240m: unified.metrics.json.240m
+    source-1440m: unified.metrics.json.1440m
+
+  consumer:
+      group: influxdb-consumer-group-test
+
+tenant-routing-service:
+  url: http://localhost:8081
+
+influxdb:
+  number-of-points-in-a-write-batch: 3000
+  write-flush-duration-ms-limit: 100
+  jitter-duration: 200
+
+backup:
+  # Not using environment variable for this bucket, change as needed
+  gcs-backup-bucket: "ceres-backup-dev"
+  gcs-timeout: 30m
+  gcs-flush-milliseconds: 3600000
+  always-flush: false
+  max-cache-size: 2000
+  backup-enabled: true
+---
+spring:
+  profiles: development
+
+rest-template:
+  request-config:
+    connection-request-timeout: 120000  # timeout when requesting a connection from the connection manager
+    connect-timeout: 120000             # timeout until a connection is established
+    socket-timeout: 120000              # timeout for waiting for data
+
+  pooling-http-client-connection-manager:
+    max-total: 10 # Max number of connection to pool
+    default-max-per-route: 2 # default max per route
+
+kafka:
+  servers: "localhost:9092"
+  listener-container-idle-interval: 10000
+  session-timeout-ms-config: 30000
+  heartbeat-interval-ms-config: 10000
+  max-poll-records-config: 1500
+  fetch-min-bytes-config: 8388608
+  fetch-max-wait-ms-config: 10
+  max-partition-fetch-bytes-config: 8388608
+
+  topics:
+    in: unified.metrics.json
+    source-5m: unified.metrics.json.5m
+    source-20m: unified.metrics.json.20m
+    source-60m: unified.metrics.json.60m
+    source-240m: unified.metrics.json.240m
+    source-1440m: unified.metrics.json.1440m
+
+  consumer:
+      group: influxdb-consumer-group-test-local
+
+tenant-routing-service:
+  url: http://localhost:8081
+
+influxdb:
+  number-of-points-in-a-write-batch: 3000
+  write-flush-duration-ms-limit: 100
+  jitter-duration: 200
+
+
+logging:
+  level:
+    com.rackspacecloud: debug
+    org.springframework:
+      web: debug
+      kafka.listener: debug
+    okhttp3: warn
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,jolokia,metrics"
+  metrics:
+    tags:
+      stack: "dev"
+      service: "ingestion-service"
+    export:
+      influx:
+        db: ceres
+        uri: http://localhost:8086
+        auto-create-db: true
+      stackdriver:
+        project-id: ceres-dev-222017
+        enabled: false
+
+backup:
+  gcs-backup-bucket: ${GCS_BACKUP_BUCKET}
+  gcs-timeout: 30m
+  gcs-flush-milliseconds: 3600000
+  always-flush: false
+  max-cache-size: 2000
+  backup-enabled: true
+---
+spring:
+  profiles: production
+
+server:
+  port: 8080
+
+rest-template:
+  request-config:
+    # timeout when requesting a connection from the connection manager
+    connection-request-timeout: ${REST_TEMPLATE_CONNECTION_REQUEST_TIMEOUT}
+
+    # timeout until a connection is established
+    connect-timeout: ${REST_TEMPLATE_CONNECT_TIMEOUT}
+
+    # timeout for waiting for data
+    socket-timeout: ${REST_TEMPLATE_SOCKET_TIMEOUT}
+
+  pooling-http-client-connection-manager:
+    max-total: ${REST_TEMPLATE_CONNECTION_POOLING_MAX} # Max number of connection to pool
+    default-max-per-route: ${REST_TEMPLATE_CONNECTION_POOLING_DEFAULT_MAX_PER_ROUTE} # default max per route
+
+local-metrics-url: ${INFLUXDB_METRICS_URL}
+
+lru-cache-size: ${LRU_CACHE_SIZE}
+
+kafka:
+  servers: ${KAFKA_BOOTSTRAP_SERVERS}
+  listener-container-idle-interval: ${LISTENER_CONTAINER_IDLE_INTERVAL}
+  session-timeout-ms-config: ${SESSION_TIMEOUT_MS_CONFIG}
+  heartbeat-interval-ms-config: ${HEARTBEAT_INTERVAL_MS_CONFIG}
+  max-poll-records-config: ${MAX_POLL_RECORDS_CONFIG}
+  fetch-min-bytes-config: ${FETCH_MIN_BYTES_CONFIG}
+  fetch-max-wait-ms-config: ${FETCH_MAX_WAIT_MS_CONFIG}
+  max-partition-fetch-bytes-config: ${MAX_PARTITION_FETCH_BYTES_CONFIG}
+
+  ssl:
+    truststore-location: ${TRUSTSTORE_LOCATION}
+    truststore-password: ${TRUSTSTORE_PASSWORD}
+    keystore-location: ${KEYSTORE_LOCATION}
+    keystore-password: ${KEYSTORE_PASSWORD}
+    key-password: ${KEY_PASSWORD}
+  properties:
+    security-protocol: SSL
+
+  topics:
+    in: unified.metrics.json
+    source-5m: unified.metrics.json.5m
+    source-20m: unified.metrics.json.20m
+    source-60m: unified.metrics.json.60m
+    source-240m: unified.metrics.json.240m
+    source-1440m: unified.metrics.json.1440m
+
+  consumer:
+    group: ${KAFKA_CONSUMER_GROUP}
+
+tenant-routing-service:
+  url: ${TENANT_ROUTING_SERVICE_URL}
+
+influxdb:
+  number-of-points-in-a-write-batch: ${NUMBER_OF_POINTS_IN_A_WRITE_BATCH}
+  write-flush-duration-ms-limit: ${WRITE_FLUSH_DURATION_MS_LIMIT}
+  jitter-duration: ${JITTER_DURATION}
+
+logging:
+  level:
+    com.rackspacecloud: info
+    org.springframework:
+      web: info
+      kafka.listener: info
+    okhttp3: warn
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,jolokia,metrics"
+  metrics:
+    tags:
+      stack: "prod"
+      service: "ingestion-service"
+    export:
+      statsd:
+        flavor: ${statsd.flavor:telegraf}
+        host: ${statsd.host:localhost}
+        port: ${statsd.port:8125}
+        enabled: ${statsd.enabled:false}
+      influx:
+        db: ceres
+        uri: ${INFLUXDB_METRICS_URL}
+        auto-create-db: true
+      stackdriver:
+        project-id: ceres-dev-222017
+        enabled: ${STACKDRIVER_ENABLED}
+        batch-size: ${STACKDRIVER_BATCH_SIZE}
+
+backup:
+  gcs-backup-bucket: ${GCS_BACKUP_BUCKET}
+  gcs-timeout: 30m
+  gcs-flush-milliseconds: 3600000
+  always-flush: false # We may want to disable this for performance reasons
+  max-cache-size: ${BACKUP_CACHE_SIZE}
+  backup-enabled: ${BACKUP_ENABLED}

@@ -4,6 +4,10 @@ import org.influxdb.BatchOptions;
 import org.influxdb.InfluxDB;
 
 public class InfluxDBFactory {
+    public InfluxDB connect(String serverURL, String username, String password) {
+        return getInfluxDB(serverURL);
+    }
+
     public InfluxDB getInfluxDB(String url, int numberOfPointsInAWriteBatch,
                                 int writeFlushDurationMsLimit, int jitterDuration) {
         BatchOptions batchOptions = BatchOptions.DEFAULTS;
