@@ -34,7 +34,7 @@ public class NotcreatedDBInfluxDB {
                 .retryOnConnectionFailure(true);
 
         if (influxDB == null) {
-            influxDB = InfluxDBFactory.connect("http://localhost:8086","Ravi5626","*****", client);
+            influxDB = InfluxDBFactory.connect("http://localhost:8086","*****","*****", client);
         }
 
 

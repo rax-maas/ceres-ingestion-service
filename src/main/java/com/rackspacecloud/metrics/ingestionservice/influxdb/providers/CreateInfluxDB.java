@@ -29,7 +29,7 @@ public class CreateInfluxDB {
 
     public CreateInfluxDB(String username, String password, String openurl, String database,
                           String retentionPolicy) {
-        this.username = "Ravi5626";
+        this.username = "*****";
         this.password = "*****";
         this.openurl = "http://localhost:8086";
         this.database = "db_1";

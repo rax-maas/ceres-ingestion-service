@@ -78,7 +78,6 @@ public class CreateInfluxDBTests {
     @Test
     public void isNotDBExistinRestore(){
 
-//        CreateInfluxDB influxDBConnection1 = new CreateInfluxDB("","","","","");
         CreateInfluxDB influxDBConnection1 = new CreateInfluxDB(username,password,openurl,database,retentionPolicy);
         Query dbquery = new Query("SHOW DATABASES", null);
         List<QueryResult.Result> dbresults = new ArrayList<>();
