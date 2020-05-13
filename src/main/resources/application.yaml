@@ -3,7 +3,8 @@ server:
 spring:
   application:
     name: ceres-ingestion-service
-
+  profiles:
+    active: production
 local-metrics-url: http://localhost:8086
 local-metrics-database: ceres
 local-metrics-rp: autogen
