@@ -16,17 +16,12 @@ public class ProdTenantRouteProvider implements RouteProvider {
      * @param measurement
      * @param restTemplate is used to connect to the routing service to get the route
      * @return
-     * @throws Exception
      */
     @Override
-    public TenantRoutes getRoute(String tenantId, String measurement, RestTemplate restTemplate) throws Exception {
+    public TenantRoutes getRoute(String tenantId, String measurement, RestTemplate restTemplate) {
         String requestUrl = String.format("%s/%s/%s", tenantRoutingServiceUrl, tenantId, measurement);
 
-        try {
-            return restTemplate.getForObject(requestUrl, TenantRoutes.class);
-        }
-        catch (Exception e) {
-            throw new Exception(String.format("Exception thrown for requestUrl [%s]", requestUrl), e);
-        }
+        return restTemplate.getForObject(requestUrl, TenantRoutes.class);
+
     }
 }

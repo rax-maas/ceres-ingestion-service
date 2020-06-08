@@ -4,6 +4,7 @@ import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.RawListener;
 import com.rackspacecloud.metrics.ingestionservice.producer.MockMetricHelper;
 import com.rackspacecloud.metrics.ingestionservice.producer.Sender;
+import java.io.IOException;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -32,65 +33,59 @@ import static org.mockito.Mockito.doThrow;
 public class IngestionServiceApplicationTests {
 
 	static final String UNIFIED_METRICS_TOPIC = "unified.metrics.json";
-    static final String UNIFIED_METRICS_5M_TOPIC = "unified.metrics.json.5m";
+  static final String UNIFIED_METRICS_5M_TOPIC = "unified.metrics.json.5m";
 
 	@Autowired
-    private RawListener rawListener;
+  private RawListener rawListener;
 
 	@Autowired
-    private Sender sender;
+  private Sender sender;
 
 	@MockBean
-    private InfluxDBHelper influxDBHelperMock;
+  private InfluxDBHelper influxDBHelperMock;
 
-	@Before
-    public void setup(){
-	    // Nothing to setup at this time.
+  @Test
+  @Ignore
+  public void testSuccessfulRawDataConsumption() throws IOException, InterruptedException {
+      // Mock influxDB ingestion call
+    doNothing().when(this.influxDBHelperMock).ingestToInfluxDb(anyString(), anyString(), anyString(), anyString());
+
+    for(int i = 0; i < 1; i++) {
+      sender.send(MockMetricHelper.getValidMetric(
+            i,
+            "CORE",
+            "hybrid:1667601",
+            13,
+            true),
+          UNIFIED_METRICS_TOPIC);
     }
 
-	@Test
-    @Ignore
-	public void contextLoads() {
-	}
+      Thread.sleep(10*1000L); // wait for a few sec for consumer to process some records
 
-	@Test
-    @Ignore
-    public void testSuccessfulRawDataConsumption() throws Exception {
-        // Mock influxDB ingestion call
-		doNothing().when(this.influxDBHelperMock).ingestToInfluxDb(anyString(), anyString(), anyString(), anyString());
+      long batchProcessed = rawListener.getBatchProcessedCount();
+      Assert.assertTrue(batchProcessed > 0);
+  }
 
-	    for(int i = 0; i < 1; i++) {
-            sender.send(
-                    MockMetricHelper.getValidMetric(i, "CORE", "hybrid:1667601",
-                            13, true),
-                    UNIFIED_METRICS_TOPIC);
-        }
+  @Test
+  @Ignore
+  public void test_whenIngestToInfluxDBThrowsException_globalExceptionHandlerCatches()
+      throws IOException, InterruptedException {
+      // Mock influxDB ingestion call
+      doThrow(new IOException("test_whenIngestToInfluxDBThrowsException_globalExceptionHandlerCatches"))
+      .when(this.influxDBHelperMock).ingestToInfluxDb(anyString(), anyString(), anyString(), anyString());
 
-        Thread.sleep(10*1000L); // wait for a few sec for consumer to process some records
+      for(int i = 0; i < 1; i++) {
+          sender.send(
+                  MockMetricHelper.getValidMetric(i, "CORE", "hybrid:1667601",
+                          11, true),
+                  UNIFIED_METRICS_TOPIC);
+      }
 
-        long batchProcessed = rawListener.getBatchProcessedCount();
-        Assert.assertTrue(batchProcessed > 0);
-    }
+      Thread.sleep(10*1000L); // wait for a few sec for consumer to process some records
 
-    @Test
-    @Ignore
-    public void test_whenIngestToInfluxDBThrowsException_globalExceptionHandlerCatches() throws Exception {
-        // Mock influxDB ingestion call
-        doThrow(new Exception("test_whenIngestToInfluxDBThrowsException_globalExceptionHandlerCatches"))
-				.when(this.influxDBHelperMock).ingestToInfluxDb(anyString(), anyString(), anyString(), anyString());
-
-        for(int i = 0; i < 1; i++) {
-            sender.send(
-                    MockMetricHelper.getValidMetric(i, "CORE", "hybrid:1667601",
-                            11, true),
-                    UNIFIED_METRICS_TOPIC);
-        }
-
-        Thread.sleep(10*1000L); // wait for a few sec for consumer to process some records
-
-        // Batch processed count will still be more than 0 because exception thrown doesn't
-        // mean that batch is not processed
-        long batchProcessed = rawListener.getBatchProcessedCount();
-        Assert.assertTrue(batchProcessed > 0);
-    }
+      // Batch processed count will still be more than 0 because exception thrown doesn't
+      // mean that batch is not processed
+      long batchProcessed = rawListener.getBatchProcessedCount();
+      Assert.assertTrue(batchProcessed > 0);
+  }
 }

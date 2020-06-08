@@ -8,6 +8,7 @@ import com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.proces
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Timer;
+import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.influxdb.InfluxDB;
 import org.springframework.beans.factory.annotation.Value;
@@ -76,7 +77,7 @@ public class RawListener extends UnifiedMetricsListener {
             errorHandler = "listenerErrorHandler"
     )
     public void listenUnifiedMetricsTopic(
-            @Payload final List<Message<ExternalMetric>> records, final Acknowledgment ack) throws Exception {
+            @Payload final List<Message<ExternalMetric>> records, final Acknowledgment ack) {
 
         long batchProcessingStartTime = System.currentTimeMillis();
         batchProcessedCount++;
@@ -135,7 +136,7 @@ public class RawListener extends UnifiedMetricsListener {
                         tenantIdAndMeasurement.getMeasurement(), "full");
                 // TODO: make enum for rollup level
 
-            } catch (Exception e) {
+            } catch (IOException e) {
                 String msg = String.format("Write to InfluxDB failed with exception message [%s].", e.getMessage());
                 log.error("[{}] Payload [{}] \n [{}]", msg, payload, e);
             }

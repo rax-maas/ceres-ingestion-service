@@ -27,7 +27,7 @@ public class RawMetricsProcessor {
 
     public static final Map<TenantIdAndMeasurement, List<String>> getTenantPayloadsMap(
             List<Message<ExternalMetric>> records,
-            ConcurrentMap<String, Map<String, Map<String, Long>>> topicPartitionRecordsCount) throws Exception {
+            ConcurrentMap<String, Map<String, Map<String, Long>>> topicPartitionRecordsCount) {
 
         Map<TenantIdAndMeasurement, List<String>> tenantPayloadMap = new HashMap<>();
         int numberOfRecordsNotConvertedIntoInfluxDBPoints = 0;
@@ -39,7 +39,7 @@ public class RawMetricsProcessor {
             populateHeaderMetrics(topicPartitionRecordsCount, record, headers);
 
             if(!CommonMetricsProcessor.isValid(TIMESTAMP, record.getTimestamp()))
-                throw new Exception("Invalid timestamp [" + record.getTimestamp() + "]");
+                throw new IllegalStateException("Invalid timestamp [" + record.getTimestamp() + "]");
 
             // Get all of the tags into Dimension
             Dimension dimension = CommonMetricsProcessor.getDimensions(record);

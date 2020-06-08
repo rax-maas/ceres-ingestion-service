@@ -12,7 +12,6 @@ public interface RouteProvider {
      * @param measurement
      * @param restTemplate is used to connect to the routing service to get the route
      * @return TenantRoutes
-     * @throws Exception
      */
-    TenantRoutes getRoute(String tenantId, String measurement, RestTemplate restTemplate) throws Exception;
+    TenantRoutes getRoute(String tenantId, String measurement, RestTemplate restTemplate) ;
 }

@@ -59,7 +59,8 @@ public class InfluxDBHelperTests {
     }
 
     @Test
-    public void ingestToInfluxDb_withExistingDatabaseAndRetPolicy_shouldSucceed() throws Exception {
+    public void ingestToInfluxDb_withExistingDatabaseAndRetPolicy_shouldSucceed()
+        throws IOException {
         InfluxDBHelper influxDBHelper = new InfluxDBHelper(
                 restTemplateMock, routeProviderMock, meterRegistry,
                 influxDBUtilsMock, backupService, 100, 100,
@@ -81,7 +82,7 @@ public class InfluxDBHelperTests {
     }
 
     @Test
-    public void ingestToInfluxDb_withNonExistingDatabase_shouldCreateDatabase() throws Exception {
+    public void ingestToInfluxDb_withNonExistingDatabase_shouldCreateDatabase() throws IOException {
         InfluxDBHelper influxDBHelper = new InfluxDBHelper(
                 restTemplateMock, routeProviderMock, meterRegistry, influxDBUtilsMock, backupService,
                 100, 100, 100, cacheMock);
@@ -99,7 +100,7 @@ public class InfluxDBHelperTests {
 
     @Test
     public void ingestToInfluxDb_withExistingDatabaseNonExistingRetentionPolicy_shouldCreateRetentionPolicy()
-            throws Exception {
+        throws IOException {
         InfluxDBHelper influxDBHelper = new InfluxDBHelper(
                 restTemplateMock, routeProviderMock, meterRegistry,
                 influxDBUtilsMock, backupService, 100,
@@ -124,7 +125,7 @@ public class InfluxDBHelperTests {
     private void successfulIngestionTest(
             InfluxDBHelper influxDBHelper, InfluxDBFactory influxDBUtilsMock,
             String tenantId, String measurement, String databaseName, String rpName,
-            Timer influxDBWriteTimer, Timer getInfluxDBInfoTimer) throws Exception {
+            Timer influxDBWriteTimer, Timer getInfluxDBInfoTimer) throws IOException {
 
         String payloadToIngestInInfluxDB = "valid payload";
         String rollupLevel = "full";
