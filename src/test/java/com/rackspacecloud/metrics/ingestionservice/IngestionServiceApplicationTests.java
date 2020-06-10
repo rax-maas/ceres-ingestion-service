@@ -1,5 +1,6 @@
 package com.rackspacecloud.metrics.ingestionservice;
 
+import com.rackspacecloud.metrics.ingestionservice.exceptions.IngestFailedException;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.RawListener;
 import com.rackspacecloud.metrics.ingestionservice.producer.MockMetricHelper;
@@ -46,7 +47,8 @@ public class IngestionServiceApplicationTests {
 
   @Test
   @Ignore
-  public void testSuccessfulRawDataConsumption() throws IOException, InterruptedException {
+  public void testSuccessfulRawDataConsumption()
+      throws InterruptedException, IngestFailedException {
       // Mock influxDB ingestion call
     doNothing().when(this.influxDBHelperMock).ingestToInfluxDb(anyString(), anyString(), anyString(), anyString());
 
@@ -69,9 +71,9 @@ public class IngestionServiceApplicationTests {
   @Test
   @Ignore
   public void test_whenIngestToInfluxDBThrowsException_globalExceptionHandlerCatches()
-      throws IOException, InterruptedException {
+      throws InterruptedException, IngestFailedException {
       // Mock influxDB ingestion call
-      doThrow(new IOException("test_whenIngestToInfluxDBThrowsException_globalExceptionHandlerCatches"))
+      doThrow(new IngestFailedException("test_whenIngestToInfluxDBThrowsException_globalExceptionHandlerCatches"))
       .when(this.influxDBHelperMock).ingestToInfluxDb(anyString(), anyString(), anyString(), anyString());
 
       for(int i = 0; i < 1; i++) {
@@ -86,6 +88,7 @@ public class IngestionServiceApplicationTests {
       // Batch processed count will still be more than 0 because exception thrown doesn't
       // mean that batch is not processed
       long batchProcessed = rawListener.getBatchProcessedCount();
+
       Assert.assertTrue(batchProcessed > 0);
   }
 }

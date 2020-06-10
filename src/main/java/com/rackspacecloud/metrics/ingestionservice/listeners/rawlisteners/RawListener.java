@@ -1,6 +1,8 @@
 package com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners;
 
 import com.rackspace.monplat.protocol.ExternalMetric;
+import com.rackspacecloud.metrics.ingestionservice.exceptions.IngestFailedException;
+import com.rackspacecloud.metrics.ingestionservice.exceptions.InvalidDataException;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.listeners.UnifiedMetricsListener;
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.TenantIdAndMeasurement;
@@ -77,7 +79,8 @@ public class RawListener extends UnifiedMetricsListener {
             errorHandler = "listenerErrorHandler"
     )
     public void listenUnifiedMetricsTopic(
-            @Payload final List<Message<ExternalMetric>> records, final Acknowledgment ack) {
+            @Payload final List<Message<ExternalMetric>> records, final Acknowledgment ack)
+        throws InvalidDataException {
 
         long batchProcessingStartTime = System.currentTimeMillis();
         batchProcessedCount++;
@@ -136,9 +139,8 @@ public class RawListener extends UnifiedMetricsListener {
                         tenantIdAndMeasurement.getMeasurement(), "full");
                 // TODO: make enum for rollup level
 
-            } catch (IOException e) {
-                String msg = String.format("Write to InfluxDB failed with exception message [%s].", e.getMessage());
-                log.error("[{}] Payload [{}] \n [{}]", msg, payload, e);
+            } catch (IngestFailedException e) {
+                log.error("Write to InfluxDB failed with Payload [{}] \n [{}]", payload, e);
             }
         }
     }

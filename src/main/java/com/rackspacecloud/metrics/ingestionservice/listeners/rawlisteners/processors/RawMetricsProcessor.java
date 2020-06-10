@@ -1,6 +1,7 @@
 package com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.processors;
 
 import com.rackspace.monplat.protocol.ExternalMetric;
+import com.rackspacecloud.metrics.ingestionservice.exceptions.InvalidDataException;
 import com.rackspacecloud.metrics.ingestionservice.listeners.UnifiedMetricsListener;
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.CommonMetricsProcessor;
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.Dimension;
@@ -27,7 +28,8 @@ public class RawMetricsProcessor {
 
     public static final Map<TenantIdAndMeasurement, List<String>> getTenantPayloadsMap(
             List<Message<ExternalMetric>> records,
-            ConcurrentMap<String, Map<String, Map<String, Long>>> topicPartitionRecordsCount) {
+            ConcurrentMap<String, Map<String, Map<String, Long>>> topicPartitionRecordsCount)
+        throws InvalidDataException {
 
         Map<TenantIdAndMeasurement, List<String>> tenantPayloadMap = new HashMap<>();
         int numberOfRecordsNotConvertedIntoInfluxDBPoints = 0;
@@ -39,7 +41,7 @@ public class RawMetricsProcessor {
             populateHeaderMetrics(topicPartitionRecordsCount, record, headers);
 
             if(!CommonMetricsProcessor.isValid(TIMESTAMP, record.getTimestamp()))
-                throw new IllegalStateException("Invalid timestamp [" + record.getTimestamp() + "]");
+                throw new InvalidDataException("Invalid timestamp [" + record.getTimestamp() + "]");
 
             // Get all of the tags into Dimension
             Dimension dimension = CommonMetricsProcessor.getDimensions(record);
