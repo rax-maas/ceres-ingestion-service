@@ -1,6 +1,7 @@
 package com.rackspacecloud.metrics.ingestionservice.influxdb;
 
 import com.github.benmanes.caffeine.cache.Cache;
+import com.rackspacecloud.metrics.ingestionservice.exceptions.ExternalSystemException;
 import com.rackspacecloud.metrics.ingestionservice.exceptions.IngestFailedException;
 import com.rackspacecloud.metrics.ingestionservice.exceptions.InvalidDataException;
 import com.rackspacecloud.metrics.ingestionservice.exceptions.QueryFailedException;
@@ -12,6 +13,14 @@ import com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBFactory;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import java.io.IOException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -20,12 +29,6 @@ import org.influxdb.InfluxDBException;
 import org.influxdb.dto.Query;
 import org.influxdb.dto.QueryResult;
 import org.springframework.web.client.RestTemplate;
-
-import java.net.URL;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class InfluxDBHelper {
@@ -191,6 +194,7 @@ public class InfluxDBHelper {
           String errMsg = String.format(
               "Failed to get routes for tenantId [%s] and measurement [%s]", tenantId, measurement);
           log.error(errMsg, e);
+          throw new ExternalSystemException(e);
         }
         if(tenantRoutes == null) throw new RouteNotFoundException();
         return tenantRoutes;
