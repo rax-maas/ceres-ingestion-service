@@ -1,9 +1,11 @@
 package com.rackspacecloud.metrics.ingestionservice;
 
+import com.rackspacecloud.metrics.ingestionservice.exceptions.IngestFailedException;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.RollupListener;
 import com.rackspacecloud.metrics.ingestionservice.producer.MockMetricRollupHelper;
 import com.rackspacecloud.metrics.ingestionservice.producer.Sender;
+import java.io.IOException;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -61,36 +63,42 @@ public class RollupIngestionServiceTests {
     }
 
     @Test
-    public void test_Rollup5M_Consume() throws Exception {
+    public void test_Rollup5M_Consume()
+        throws InterruptedException, IngestFailedException {
         String topicToSendData = UNIFIED_METRICS_5M_TOPIC;
         testForGivenTopic(topicToSendData);
     }
 
     @Test
-    public void test_Rollup20M_Consume() throws Exception {
+    public void test_Rollup20M_Consume()
+        throws InterruptedException, IngestFailedException {
         String topicToSendData = UNIFIED_METRICS_20M_TOPIC;
         testForGivenTopic(topicToSendData);
     }
 
     @Test
-    public void test_Rollup60M_Consume() throws Exception {
+    public void test_Rollup60M_Consume()
+        throws InterruptedException, IngestFailedException {
         String topicToSendData = UNIFIED_METRICS_60M_TOPIC;
         testForGivenTopic(topicToSendData);
     }
 
     @Test
-    public void test_Rollup240M_Consume() throws Exception {
+    public void test_Rollup240M_Consume()
+        throws InterruptedException, IngestFailedException {
         String topicToSendData = UNIFIED_METRICS_240M_TOPIC;
         testForGivenTopic(topicToSendData);
     }
 
     @Test
-    public void test_Rollup1440M_Consume() throws Exception {
+    public void test_Rollup1440M_Consume()
+        throws InterruptedException, IngestFailedException {
         String topicToSendData = UNIFIED_METRICS_1440M_TOPIC;
         testForGivenTopic(topicToSendData);
     }
 
-    private void testForGivenTopic(String topicToSendData) throws Exception {
+    private void testForGivenTopic(String topicToSendData)
+        throws InterruptedException, IngestFailedException {
         // Mock influxDB ingestion call
         doNothing().when(this.influxDBHelperMock).ingestToInfluxDb(anyString(), anyString(), anyString(), anyString());
 

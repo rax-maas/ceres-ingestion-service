@@ -1,12 +1,26 @@
 package com.rackspacecloud.metrics.ingestionservice.influxdb;
 
 import com.github.benmanes.caffeine.cache.Cache;
+import com.rackspacecloud.metrics.ingestionservice.exceptions.ExternalSystemException;
+import com.rackspacecloud.metrics.ingestionservice.exceptions.IngestFailedException;
+import com.rackspacecloud.metrics.ingestionservice.exceptions.InvalidDataException;
+import com.rackspacecloud.metrics.ingestionservice.exceptions.QueryFailedException;
+import com.rackspacecloud.metrics.ingestionservice.exceptions.RouteNotFoundException;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.LineProtocolBackupService;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.RouteProvider;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.TenantRoutes;
 import com.rackspacecloud.metrics.ingestionservice.utils.InfluxDBFactory;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import java.io.IOException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -15,12 +29,6 @@ import org.influxdb.InfluxDBException;
 import org.influxdb.dto.Query;
 import org.influxdb.dto.QueryResult;
 import org.springframework.web.client.RestTemplate;
-
-import java.net.URL;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class InfluxDBHelper {
@@ -97,10 +105,9 @@ public class InfluxDBHelper {
      * @param tenantId
      * @param measurement
      * @return
-     * @throws Exception
      */
     private Map<String, InfluxDbInfoForRollupLevel> getInfluxDbInfo(
-            final String tenantId, final String measurement) throws Exception {
+            final String tenantId, final String measurement) {
 
         String tenantIdAndMeasurementKey = String.format("%s:%s", tenantId, measurement);
 
@@ -177,76 +184,66 @@ public class InfluxDBHelper {
      * @param tenantId
      * @param measurement
      * @return
-     * @throws Exception
      */
-    private TenantRoutes getTenantRoutes(String tenantId, String measurement) throws Exception {
-        TenantRoutes tenantRoutes;
+    private TenantRoutes getTenantRoutes(String tenantId, String measurement) {
+        TenantRoutes tenantRoutes = null;
 
         try {
-            tenantRoutes = routeProvider.getRoute(tenantId, measurement, restTemplate);
+          tenantRoutes = routeProvider.getRoute(tenantId, measurement, restTemplate);
+        } catch(RuntimeException e) {
+          String errMsg = String.format(
+              "Failed to get routes for tenantId [%s] and measurement [%s]", tenantId, measurement);
+          log.error(errMsg, e);
+          throw new ExternalSystemException(e);
         }
-        catch(Exception e) {
-            String errMsg = String.format(
-                    "Failed to get routes for tenantId [%s] and measurement [%s]", tenantId, measurement);
-            log.error(errMsg, e);
-            throw new Exception(errMsg, e);
-        }
-
-        if(tenantRoutes == null) throw new Exception("tenantRoutes is null.");
+        if(tenantRoutes == null) throw new RouteNotFoundException();
         return tenantRoutes;
     }
 
-    private boolean databaseExists(final String databaseName, final String baseUrl) throws Exception {
+    private boolean databaseExists(final String databaseName, final String baseUrl) {
         String queryString = "SHOW DATABASES";
 
         InfluxDB influxDB = getInfluxDBClient(baseUrl);
 
-        if(influxDB == null) {
-            String errorMessage = String.format("Couldn't get InfluxDB instance for URL [%s].", baseUrl);
-            log.error(errorMessage);
-            throw new Exception(errorMessage);
-        }
-
         QueryResult queryResult = influxDB.query(new Query(queryString, ""));
 
         if(queryResult.hasError()) {
-            log.error("Query result got error for query [{}]", queryString);
-            return false;
+          log.error("Query result got error for query [{}]", queryString);
+          throw new QueryFailedException();
         }
 
         try {
-            // Following "if" statement is quite ugly. We should refactor it sometime. Readability is bad.
-            // So, here is what's going on:
-            // We need to make sure that query result has some value in it's series.
-            // Earlier I was assuming that even if there is no "value" in a series, it will still have that key.
-            // I was wrong. This is coming from external library where we don't have control.
-            // So, to be more defensive on the coding, I added null checks at every level.
-            // For example,
-            //      - before we access any result, we should check that getResults() doesn't return null
-            //      - before we access any series, we should check that getSeries() doesn't return null
-            //      - before we access any value, we should check that getValues() doesn't return null
-            // As this result is coming from external library, it's always a good idea to make these checks before
-            // accepting that in our code.
-            if (queryResult != null
-                    && queryResult.getResults() != null
-                    && queryResult.getResults().size() > 0
-                    && queryResult.getResults().get(0).getSeries() != null
-                    && queryResult.getResults().get(0).getSeries().size() > 0
-                    && queryResult.getResults().get(0).getSeries().get(0).getValues() != null
-                    && queryResult.getResults().get(0).getSeries().get(0).getValues().size() > 0
-                    ) {
-                List<String> databases = new ArrayList<>();
-                for (List<Object> strings : queryResult.getResults().get(0).getSeries().get(0).getValues()) {
-                    for (Object database : strings) {
-                        databases.add(database.toString());
-                    }
-                }
-                if (databases.contains(databaseName)) return true;
+          // Following "if" statement is quite ugly. We should refactor it sometime. Readability is bad.
+          // So, here is what's going on:
+          // We need to make sure that query result has some value in it's series.
+          // Earlier I was assuming that even if there is no "value" in a series, it will still have that key.
+          // I was wrong. This is coming from external library where we don't have control.
+          // So, to be more defensive on the coding, I added null checks at every level.
+          // For example,
+          //      - before we access any result, we should check that getResults() doesn't return null
+          //      - before we access any series, we should check that getSeries() doesn't return null
+          //      - before we access any value, we should check that getValues() doesn't return null
+          // As this result is coming from external library, it's always a good idea to make these checks before
+          // accepting that in our code.
+          if (queryResult != null
+              && queryResult.getResults() != null
+              && queryResult.getResults().size() > 0
+              && queryResult.getResults().get(0).getSeries() != null
+              && queryResult.getResults().get(0).getSeries().size() > 0
+              && queryResult.getResults().get(0).getSeries().get(0).getValues() != null
+              && queryResult.getResults().get(0).getSeries().get(0).getValues().size() > 0
+          ) {
+            List<String> databases = new ArrayList<>();
+            for (List<Object> strings : queryResult.getResults().get(0).getSeries().get(0)
+                .getValues()) {
+              for (Object database : strings) {
+                databases.add(database.toString());
+              }
             }
-        }
-        catch (Exception ex) {
-            log.error("Query result processing throws exception. Message: [{}]", ex.getMessage());
-            throw ex;
+            return databases.contains(databaseName);
+          }
+        } catch(Exception e) {
+          throw new QueryFailedException("Unable to query for database existence", e);
         }
 
         return false;
@@ -264,18 +261,19 @@ public class InfluxDBHelper {
             return false;
         }
 
-        if(queryResult != null
-                && queryResult.getResults().size() > 0
-                && queryResult.getResults().get(0).getSeries().size() > 0
-                && queryResult.getResults().get(0).getSeries().get(0).getValues().size() > 0
-                )
-        {
-            List<String> retPolicies = new ArrayList<>();
-            for(List<Object> strings : queryResult.getResults().get(0).getSeries().get(0).getValues()) {
-                retPolicies.add(strings.get(0).toString());
-            }
+        if (queryResult != null
+            && queryResult.getResults().size() > 0
+            && queryResult.getResults().get(0).getSeries().size() > 0
+            && queryResult.getResults().get(0).getSeries().get(0).getValues().size() > 0
+        ) {
+          List<String> retPolicies = new ArrayList<>();
+          for (List<Object> strings : queryResult.getResults().get(0).getSeries().get(0)
+              .getValues()) {
+            retPolicies.add(strings.get(0).toString());
+          }
 
-            if(retPolicies.contains(rp)) return true;
+          if (retPolicies.contains(rp))
+            return true;
         }
 
         return false;
@@ -317,7 +315,8 @@ public class InfluxDBHelper {
     }
 
     public void ingestToInfluxDb(
-            String payload, String tenantId, String measurement, String rollupLevel) throws Exception {
+            String payload, String tenantId, String measurement, String rollupLevel)
+        throws IngestFailedException {
 
         long startTimeGetInfluxDBInfo = System.currentTimeMillis();
 
@@ -341,13 +340,16 @@ public class InfluxDBHelper {
             // Enable or disable using
             backupService.writeToBackup(payload, new URL(baseUrl), databaseName, retPolicyName);
             influxDB.write(databaseName, retPolicyName, InfluxDB.ConsistencyLevel.ONE, TimeUnit.SECONDS, payload);
-        }
-        catch(InfluxDBException.PointsBeyondRetentionPolicyException ex) {
-            log.error("Write failed for the payload. baseURL: [{}], databaseName: [{}], ret-policy: [{}]",
-                    baseUrl, databaseName, retPolicyName);
-            throw ex;
+        } catch(InfluxDBException.PointsBeyondRetentionPolicyException e) {
+          log.error("Write failed for the payload. baseURL: [{}], databaseName: [{}], ret-policy: [{}]",
+                  baseUrl, databaseName, retPolicyName);
+          throw new InvalidDataException(e);
+        } catch(IOException e) {
+          log.error("Write failed for the payload. baseURL: [{}], databaseName: [{}], ret-policy: [{}]",
+              baseUrl, databaseName, retPolicyName);
+          throw new IngestFailedException(e);
         }
 
-        influxDBWriteTimer.record(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS);
+      influxDBWriteTimer.record(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS);
     }
 }

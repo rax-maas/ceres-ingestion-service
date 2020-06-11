@@ -1,6 +1,8 @@
 package com.rackspacecloud.metrics.ingestionservice.influxdb.providers;
 
+import com.rackspacecloud.metrics.ingestionservice.exceptions.ExternalSystemException;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 /**
@@ -16,17 +18,15 @@ public class ProdTenantRouteProvider implements RouteProvider {
      * @param measurement
      * @param restTemplate is used to connect to the routing service to get the route
      * @return
-     * @throws Exception
      */
     @Override
-    public TenantRoutes getRoute(String tenantId, String measurement, RestTemplate restTemplate) throws Exception {
+    public TenantRoutes getRoute(String tenantId, String measurement, RestTemplate restTemplate) {
         String requestUrl = String.format("%s/%s/%s", tenantRoutingServiceUrl, tenantId, measurement);
 
         try {
-            return restTemplate.getForObject(requestUrl, TenantRoutes.class);
-        }
-        catch (Exception e) {
-            throw new Exception(String.format("Exception thrown for requestUrl [%s]", requestUrl), e);
+          return restTemplate.getForObject(requestUrl, TenantRoutes.class);
+        } catch(RestClientException e) {
+          throw new ExternalSystemException(e);
         }
     }
 }

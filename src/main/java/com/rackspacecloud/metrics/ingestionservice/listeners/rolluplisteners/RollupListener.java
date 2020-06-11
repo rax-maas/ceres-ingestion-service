@@ -1,10 +1,12 @@
 package com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners;
 
+import com.rackspacecloud.metrics.ingestionservice.exceptions.IngestFailedException;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.listeners.UnifiedMetricsListener;
 import com.rackspacecloud.metrics.ingestionservice.listeners.processors.TenantIdAndMeasurement;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.models.MetricRollup;
 import com.rackspacecloud.metrics.ingestionservice.listeners.rolluplisteners.processors.MetricsRollupProcessor;
+import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,7 +45,7 @@ public class RollupListener extends UnifiedMetricsListener {
             @Payload final List<MetricRollup> records,
             @Header(KafkaHeaders.RECEIVED_PARTITION_ID) final int partitionId,
             @Header(KafkaHeaders.OFFSET) final long offset,
-            final Acknowledgment ack) throws Exception {
+            final Acknowledgment ack) throws IngestFailedException {
 
         String rollupLevel = "5m";
 
@@ -59,7 +61,7 @@ public class RollupListener extends UnifiedMetricsListener {
             @Payload final List<MetricRollup> records,
             @Header(KafkaHeaders.RECEIVED_PARTITION_ID) final int partitionId,
             @Header(KafkaHeaders.OFFSET) final long offset,
-            final Acknowledgment ack) throws Exception {
+            final Acknowledgment ack) throws IngestFailedException {
 
         String rollupLevel = "20m";
 
@@ -75,7 +77,7 @@ public class RollupListener extends UnifiedMetricsListener {
             @Payload final List<MetricRollup> records,
             @Header(KafkaHeaders.RECEIVED_PARTITION_ID) final int partitionId,
             @Header(KafkaHeaders.OFFSET) final long offset,
-            final Acknowledgment ack) throws Exception {
+            final Acknowledgment ack) throws IngestFailedException {
 
         String rollupLevel = "60m";
 
@@ -91,7 +93,7 @@ public class RollupListener extends UnifiedMetricsListener {
             @Payload final List<MetricRollup> records,
             @Header(KafkaHeaders.RECEIVED_PARTITION_ID) final int partitionId,
             @Header(KafkaHeaders.OFFSET) final long offset,
-            final Acknowledgment ack) throws Exception {
+            final Acknowledgment ack) throws IngestFailedException {
 
         String rollupLevel = "240m";
 
@@ -107,7 +109,7 @@ public class RollupListener extends UnifiedMetricsListener {
             @Payload final List<MetricRollup> records,
             @Header(KafkaHeaders.RECEIVED_PARTITION_ID) final int partitionId,
             @Header(KafkaHeaders.OFFSET) final long offset,
-            final Acknowledgment ack) throws Exception {
+            final Acknowledgment ack) throws IngestFailedException {
 
         String rollupLevel = "1440m";
 
@@ -119,7 +121,7 @@ public class RollupListener extends UnifiedMetricsListener {
             @Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partitionId,
             @Header(KafkaHeaders.OFFSET) long offset,
             Acknowledgment ack,
-            String rollupLevel) throws Exception {
+            String rollupLevel) throws IngestFailedException {
 
         batchProcessedCount++;
 
@@ -133,7 +135,7 @@ public class RollupListener extends UnifiedMetricsListener {
 
     private void writeToInfluxDb(
             final Map<TenantIdAndMeasurement, List<String>> tenantPayloadsMap,
-            final String rollupLevel) throws Exception {
+            final String rollupLevel) throws IngestFailedException {
 
         for(Map.Entry<TenantIdAndMeasurement, List<String>> entry : tenantPayloadsMap.entrySet()) {
             TenantIdAndMeasurement tenantIdAndMeasurement = entry.getKey();
@@ -144,16 +146,14 @@ public class RollupListener extends UnifiedMetricsListener {
                         payload, tenantIdAndMeasurement.getTenantId(),
                         tenantIdAndMeasurement.getMeasurement(), rollupLevel);
 
-            } catch (Exception e) {
+            } catch (IngestFailedException e) {
                 String msg = String.format("Write to InfluxDB failed with exception message [%s].", e.getMessage());
                 if(e.getCause().getClass().equals(ResourceAccessException.class)){
                     log.error(msg, e);
-                }
-                else {
+                } else {
                     log.error("[{}] Payload [{}]", msg, payload, e);
                 }
-
-                throw new Exception(msg, e);
+                throw e;
             }
         }
     }

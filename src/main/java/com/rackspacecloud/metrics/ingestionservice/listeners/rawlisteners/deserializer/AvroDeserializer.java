@@ -1,5 +1,6 @@
 package com.rackspacecloud.metrics.ingestionservice.listeners.rawlisteners.deserializer;
 
+import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
@@ -41,7 +42,7 @@ public class AvroDeserializer<T extends SpecificRecordBase> implements Deseriali
             log.debug("Deserialized data: [{}]", result);
 
             return result;
-        } catch (Exception e) {
+        } catch (IOException | InstantiationException | IllegalAccessException e) {
             String errorMessage = String.format("Deserialization failed for topic [%s] with exception message: [%s]",
                     topicName, e.getMessage());
             log.error("{} Data in question is [{}]", errorMessage, new String(data));

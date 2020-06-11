@@ -1,5 +1,6 @@
 package com.rackspacecloud.metrics.ingestionservice.producer;
 
+import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
@@ -40,7 +41,7 @@ public class AvroSerializer<T extends SpecificRecordBase> implements Serializer<
 
             return result;
         }
-        catch (Exception e){
+        catch (IOException e) {
             String errorMessage = String.format("Serialization failed for topic [%s] with exception message: [%s]",
                     topicName, e.getMessage());
             log.error("{} Data in question is [{}]", errorMessage, data);

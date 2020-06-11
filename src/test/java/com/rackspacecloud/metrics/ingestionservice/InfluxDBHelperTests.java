@@ -1,6 +1,7 @@
 package com.rackspacecloud.metrics.ingestionservice;
 
 import com.github.benmanes.caffeine.cache.Cache;
+import com.rackspacecloud.metrics.ingestionservice.exceptions.IngestFailedException;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.InfluxDBHelper;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.GCLineProtocolBackupService;
 import com.rackspacecloud.metrics.ingestionservice.influxdb.providers.RouteProvider;
@@ -59,7 +60,8 @@ public class InfluxDBHelperTests {
     }
 
     @Test
-    public void ingestToInfluxDb_withExistingDatabaseAndRetPolicy_shouldSucceed() throws Exception {
+    public void ingestToInfluxDb_withExistingDatabaseAndRetPolicy_shouldSucceed()
+        throws IngestFailedException {
         InfluxDBHelper influxDBHelper = new InfluxDBHelper(
                 restTemplateMock, routeProviderMock, meterRegistry,
                 influxDBUtilsMock, backupService, 100, 100,
@@ -81,7 +83,8 @@ public class InfluxDBHelperTests {
     }
 
     @Test
-    public void ingestToInfluxDb_withNonExistingDatabase_shouldCreateDatabase() throws Exception {
+    public void ingestToInfluxDb_withNonExistingDatabase_shouldCreateDatabase()
+        throws IngestFailedException {
         InfluxDBHelper influxDBHelper = new InfluxDBHelper(
                 restTemplateMock, routeProviderMock, meterRegistry, influxDBUtilsMock, backupService,
                 100, 100, 100, cacheMock);
@@ -99,7 +102,7 @@ public class InfluxDBHelperTests {
 
     @Test
     public void ingestToInfluxDb_withExistingDatabaseNonExistingRetentionPolicy_shouldCreateRetentionPolicy()
-            throws Exception {
+        throws IngestFailedException {
         InfluxDBHelper influxDBHelper = new InfluxDBHelper(
                 restTemplateMock, routeProviderMock, meterRegistry,
                 influxDBUtilsMock, backupService, 100,
@@ -124,7 +127,8 @@ public class InfluxDBHelperTests {
     private void successfulIngestionTest(
             InfluxDBHelper influxDBHelper, InfluxDBFactory influxDBUtilsMock,
             String tenantId, String measurement, String databaseName, String rpName,
-            Timer influxDBWriteTimer, Timer getInfluxDBInfoTimer) throws Exception {
+            Timer influxDBWriteTimer, Timer getInfluxDBInfoTimer)
+        throws IngestFailedException {
 
         String payloadToIngestInInfluxDB = "valid payload";
         String rollupLevel = "full";
